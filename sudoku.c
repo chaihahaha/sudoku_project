@@ -5,8 +5,6 @@
 #include <assert.h>
 #define MAX_GRIDS 100
 
-//char digits[9] = "123456789";
-
 // row coordinate of a square indicated by a char from 'A' to 'I'
 char rows[9] = "ABCDEFGHI";
 
@@ -37,6 +35,7 @@ void grid_values(char* grid, bool values[81][9]);
 char** from_file(char* filename, char sep);
 void parse_grid(char** grids, int n, bool values[81][9]);
 bool search(bool values[81][9]);
+bool solved(bool values[81][9]);
 
 int main()
 {
@@ -49,7 +48,17 @@ int main()
     while(*(grids+n))
     {
         parse_grid(grids,n,values[n]);
-        search(values[n]);
+        bool solved = search(values[n]);
+        printf("Solved? %s\n",solved?"Yes!":"No");
+        for(int j=0; j<81; j++)
+        {
+            int d;
+            n_left(values[n][j], &d);
+            printf("%d ",d+1);
+            if(j%9==8)
+                printf("\n");
+        }
+        printf("\n");
         n++;
     }
     return 0;
@@ -282,6 +291,7 @@ int n_left_units(bool values[81][9], int u, int d, int s, int* ps)
         {
             // record the square
             *ps = s1;
+            count++;
         }
     }
     return count;
@@ -367,8 +377,11 @@ void grid_values(char* grid, bool values[81][9])
     {
         if(grid[idx]>=49 && grid[idx]<=57)
         {
-                assign(values, count, grid[idx]-49);
-                count++;
+            if(!assign(values, count, grid[idx]-49))
+            {
+                printf("assigning failed!\n");
+            }
+            count++;
         }
         if(grid[idx]=='0' || grid[idx]=='.')
         {
@@ -376,15 +389,6 @@ void grid_values(char* grid, bool values[81][9])
         }
         idx++;
     }
-        for(int j=0; j<81; j++)
-        {
-            for(int k=0; k<9; k++)
-            {
-                printf("%d ",values[j][k]);
-            }
-            printf("\n");
-        }
-        printf("\n");
 }
 char** from_file(char* filename, char sep)
 {
@@ -414,8 +418,71 @@ void parse_grid(char** grids, int n, bool values[81][9])
     grid_values(grid, values);
     free(*(grids+n));
 }
-
+bool solved(bool values[81][9])
+{
+    int n, d2;
+    for(int s=0; s<81; s++)
+    {
+        n = n_left(values[s], &d2);
+        if(n>1)
+        {
+            return false;
+        }
+    }
+    return true;
+}
 bool search(bool values[81][9])
 {
+    if(solved(values))
+        return true;
+    int min=10, s=0;
+    for(int i=0; i<81; i++)
+    {
+        int d2;
+        int n=n_left(values[i], &d2);
+        if(n<min && n>=2)
+        {
+            min=n;
+            s=i;
+        }
+    }
+    for(int d=0; d<9; d++)
+    {
+        if(values[s][d])
+        {
+            // back up values by deep copying
+            bool values_cp[81][9];
+            for(int i=0; i<81; i++)
+            {
+                for(int j=0; j<9; j++)
+                {
+                    values_cp[i][j]= values[i][j];
+                }
+            }
+            if(assign(values_cp, s, d))
+            {
+                // assigning is successful
+                bool solved = search(values_cp);
+                if(solved)
+                {
+                    // if solved copy back
+                    for(int i=0; i<81; i++)
+                    {
+                        for(int j=0; j<9; j++)
+                        {
+                            values[i][j]= values_cp[i][j];
+                        }
+                    }
+                    return true;
+                }
+            }
+            //else
+            //{
+            //    // assigning failed, trace back
+            //    return false;
+            //}
+        }
+    }
+    return false;
 }
 
