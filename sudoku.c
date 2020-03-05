@@ -61,6 +61,7 @@ int main()
         printf("\n");
         n++;
     }
+    free(grids);
     return 0;
 }
 char** str_split(char* a_str, const char a_delim)
