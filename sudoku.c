@@ -3,29 +3,17 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#define MAX_GRIDS 100
-
-// row coordinate of a square indicated by a char from 'A' to 'I'
-char rows[9] = "ABCDEFGHI";
-
-// column coordinate of a square indicated by a char from '1' to '9'
-char cols[9] = "123456789";
-
-// all the row-column char pair of the squares on the board
-char squares[81][2]; // 81 
 
 // all the row-column char pair of the units with all different constraint on the board
-char unitlist[27][9][2]; // 27x9
+int unitlist[27][9]; // 27x9
 
 // the dictionary to look for the units (squares in unit are diff) a char pair is placed
-char units[81][3][9][2];
+int units[81][3][9];
 
 // the dictionary to look for all peers (squares with all diff constraint) of a char pair
-char peers[81][20][2];
+int peers[81][20];
 
-void print_pair(char pair[2]);
-char hash(char pair[2]);
-bool in(char pair[2], char array[][2], int length);
+bool in(int s, int array[], int length);
 void initialize_array();
 int n_left(bool values[9], int* d);
 int n_left_units(bool values[81][9], int u, int d, int s, int* ps);
@@ -42,18 +30,18 @@ int main()
     initialize_array();
     char** grids = from_file("top95.txt",'\n');
 
-    bool values[MAX_GRIDS][81][9];
+    bool values[81][9];
     
     int n=0;
     while(*(grids+n))
     {
-        parse_grid(grids,n,values[n]);
-        bool solved = search(values[n]);
+        parse_grid(grids,n,values);
+        bool solved = search(values);
         printf("Solved? %s\n",solved?"Yes!":"No");
         for(int j=0; j<81; j++)
         {
             int d;
-            n_left(values[n][j], &d);
+            n_left(values[j], &d);
             printf("%d ",d+1);
             if(j%9==8)
                 printf("\n");
@@ -111,27 +99,13 @@ char** str_split(char* a_str, const char a_delim)
 
     return result;
 }
-void print_pair(char pair[2])
-{
-    // print a square (char pair)
-    printf("%c%c ",pair[0],pair[1]);
-}
 
-char hash(char pair[2])
-{
-    // return the hash of a char pair
-    // assuming pair[0] is a char from 'A' to 'I'
-    // pair[1] is a char from '1' to '9'
-    char row=pair[0];
-    char col=pair[1];
-    return 9*(row-65)+col-49;
-}
-bool in(char pair[2], char array[][2], int length)
+bool in(int s, int array[], int length)
 {
     // if char pair "pair" (coordinate of a grid) is in a char-pair array "array" of length "length", return true, else return false
     for(int i=0;i<length;i++)
     {
-        if(hash(pair)==hash(array[i]))
+        if(s==array[i])
         {
             return true;
         }
@@ -141,49 +115,34 @@ bool in(char pair[2], char array[][2], int length)
 
 void initialize_array()
 {
-    // initialize all the global variables
-    for(int i=0;i<81;i++)
-    {
-        squares[i][0]=rows[i/9];
-        squares[i][1]=cols[i%9];
-    }
     for(int i=0;i<9;i++)
     {
         for(int j=0;j<9;j++)
         {
-            unitlist[i][j][0]=rows[j];
-            unitlist[i][j][1]=cols[i];
+            unitlist[i][j]=j*9+i;
         }
     }
     for(int i=9;i<18;i++)
     {
         for(int j=0;j<9;j++)
         {
-            unitlist[i][j][0]=rows[i-9];
-            unitlist[i][j][1]=cols[j];
+            unitlist[i][j]=(i-9)*9+j;
         }
     }
     for(int i=18;i<27;i++)
     {
         for(int j=0;j<9;j++)
         {
-            unitlist[i][j][0]=rows[(i-18)/3*3+j/3];
-            unitlist[i][j][1]=cols[(i-18)%3*3+j%3];
+            unitlist[i][j]=((i-18)/3*3+j/3)*9+(i-18)%3*3+j%3;
         }
     }
-    printf("squares initialized\n");
-    //for(int i=0;i<81;i++)
-    //{
-    //    print_pair(squares[i]);
-    //}
-    //printf("\n");
 
-    printf("unit list initialized\n");
+    //printf("unit list initialized\n");
     //for(int i=0;i<27;i++)
     //{
     //    for(int j=0;j<9;j++)
     //    {
-    //        print_pair(unitlist[i][j]);
+    //        printf("%d ",unitlist[i][j]);
     //    }
     //    printf("\n");
     //}
@@ -194,12 +153,11 @@ void initialize_array()
         int count=0;
         for(int j=0; j<27; j++)
         {
-            if(in(squares[i], unitlist[j],9))
+            if(in(i, unitlist[j],9))
             {
                 for(int k=0; k<9; k++)
                 {
-                    units[i][count][k][0]=unitlist[j][k][0];
-                    units[i][count][k][1]=unitlist[j][k][1];
+                    units[i][count][k]=unitlist[j][k];
                 }
                 count++;
             }
@@ -209,7 +167,7 @@ void initialize_array()
             }
         }
     }
-    printf("units initialized\n");
+    //printf("units initialized\n");
     //for(int i=0; i<81; i++)
     //{
     //    print_pair(squares[i]);
@@ -218,7 +176,7 @@ void initialize_array()
     //    {
     //        for(int k=0; k<9; k++)
     //        {
-    //            print_pair(units[i][j][k]);
+    //            printf("%d ",units[i][j][k]);
     //        }
     //        printf("\n");
     //    }
@@ -227,14 +185,14 @@ void initialize_array()
 
     for(int i=0; i<81; i++)
     {
-        bool hasht[81]={false};
+        bool hasht[81]={0};
         for(int j=0; j<3; j++)
         {
             for(int k=0; k<9; k++)
             {
-                if(hash(squares[i])!=hash(units[i][j][k]))
+                if(i!=units[i][j][k])
                 {
-                    hasht[hash(units[i][j][k])]=true;
+                    hasht[units[i][j][k]]=true;
                 }
             }
         }
@@ -243,8 +201,7 @@ void initialize_array()
         {
             if(hasht[j])
             {
-                peers[i][count][0]=squares[j][0];
-                peers[i][count][1]=squares[j][1];
+                peers[i][count]=j;
                 count++;
             }
             if(count>20)
@@ -254,14 +211,14 @@ void initialize_array()
         }
     }
 
-    printf("peers initialized\n");
+    //printf("peers initialized\n");
     //for(int i=0; i<81; i++)
     //{
     //    print_pair(squares[i]);
     //    printf(": \n[");
     //    for(int k=0; k<20; k++)
     //    {
-    //        print_pair(peers[i][k]);
+    //        printf("%d ",peers[i][k]);
     //    }
     //    printf("\n");
     //    printf("]\n");
@@ -289,7 +246,7 @@ int n_left_units(bool values[81][9], int u, int d, int s, int* ps)
     for(int i=0; i<9; i++)
     {
         // if "d" can be place in one square "i" of the "u"th unit of "s", i.e. can be placed in "s1"
-        int s1 = hash(units[s][u][i]);
+        int s1 = units[s][u][i];
         if(values[s1][d])
         {
             // record the square
@@ -316,7 +273,7 @@ bool eliminate(bool values[81][9], int s, int d)
         int count = 0;
         for(int s2=0; s2<20; s2++)
         {
-            if(!eliminate(values, hash(peers[s][s2]), d2))
+            if(!eliminate(values, peers[s][s2], d2))
             {
                 count++;
             }
