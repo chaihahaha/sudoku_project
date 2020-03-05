@@ -5,6 +5,7 @@ def cross(A, B):
     return [(a,b) for a in A for b in B]
 
 def var_from_domain(model, name, domain):
+    "initialize a variable with integer domain defined by domain"
     domain = cp_model.Domain.FromIntervals([[i] for i in domain])
     val = model.NewIntVarFromDomain(domain, name)
     return val
@@ -64,9 +65,12 @@ def solve(values):
 digits   = '123456789'
 rows     = [i for i in range(9)]
 cols     = [i for i in range(9)]
+# index pair(position) to the variable x with domain of the square
 squares  = cross(rows, cols)
 
-# read one grid
+# read the grids as dictionarys from index pair to assigned digit
 value_dics = [grid_values(grid) for grid in from_file("top95.txt")]
+
+# solve all the sudokus
 for i in value_dics:
     solve(i)
