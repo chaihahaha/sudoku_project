@@ -4,6 +4,57 @@
 #include <string.h>
 #include <assert.h>
 #define MAX_GRIDS 100
+
+//char digits[9] = "123456789";
+
+// row coordinate of a square indicated by a char from 'A' to 'I'
+char rows[9] = "ABCDEFGHI";
+
+// column coordinate of a square indicated by a char from '1' to '9'
+char cols[9] = "123456789";
+
+// all the row-column char pair of the squares on the board
+char squares[81][2]; // 81 
+
+// all the row-column char pair of the units with all different constraint on the board
+char unitlist[27][9][2]; // 27x9
+
+// the dictionary to look for the units (squares in unit are diff) a char pair is placed
+char units[81][3][9][2];
+
+// the dictionary to look for all peers (squares with all diff constraint) of a char pair
+char peers[81][20][2];
+
+void print_pair(char pair[2]);
+char hash(char pair[2]);
+bool in(char pair[2], char array[][2], int length);
+void initialize_array();
+bool one_left(bool values[9], int* d);
+bool one_left_units(bool values[81][9], int u, int d, int s, int* ps);
+void eliminate(bool values[81][9], int s, int d);
+void assign(bool values[81][9], int s, int d);
+void grid_values(char* grid, bool values[81][9]);
+void from_file(char* filename, char sep, bool values[MAX_GRIDS][81][9], int* n);
+int main()
+{
+    initialize_array();
+    bool values[MAX_GRIDS][81][9]={true};
+    int n;
+    from_file("top95.txt",'\n',values,&n);
+    for(int i=0; i<n; i++)
+    {
+        for(int j=0; j<81; j++)
+        {
+            for(int k=0; k<9; k++)
+            {
+                printf("%d ",values[i][j][k]);
+            }
+            printf("\n");
+        }
+        printf("\n");
+    }
+    return 0;
+}
 char** str_split(char* a_str, const char a_delim)
 {
     char** result    = 0;
@@ -51,28 +102,9 @@ char** str_split(char* a_str, const char a_delim)
 
     return result;
 }
-//char digits[9] = "123456789";
-
-// row coordinate of a grid indicated by a char from 'A' to 'I'
-char rows[9] = "ABCDEFGHI";
-
-// column coordinate of a grid indicated by a char from '1' to '9'
-char cols[9] = "123456789";
-
-// all the row-column char pair of the grids on the board
-char squares[81][2]; // 81 
-
-// all the row-column char pair of the units with all different constraint on the board
-char unitlist[27][9][2]; // 27x9
-
-// the dictionary look for the units a char pair is in 
-char units[81][3][9][2];
-
-// the dictionary looking for all peers (grids with all diff constraint) of a char pair
-char peers[81][20][2];
-
 void print_pair(char pair[2])
 {
+    // print a square (char pair)
     printf("%c%c ",pair[0],pair[1]);
 }
 
@@ -227,33 +259,97 @@ void initialize_array()
     //}
     
 }
+bool one_left(bool values[9], int* d)
+{
+    int count=0;
+    for(int i=0; i<9; i++)
+    {
+        if(values[i])
+        {
+            *d = i;
+            count++;
+        }
+    }
+    return count==1;
+}
+bool one_left_units(bool values[81][9], int u, int d, int s, int* ps)
+{
+    int count = 0;
+    for(int i=0; i<9; i++)
+    {
+        // if "d" can be place in one square "i" of the "u"th unit of "s", i.e. can be placed in "s1"
+        int s1 = hash(units[s][u][i]);
+        if(values[s1][d])
+        {
+            // record the square
+            *ps = s1;
+        }
+    }
+    return count==1;
+}
+void eliminate(bool values[81][9], int s, int d)
+{
+    if(!values[s][d])
+        return;
+    values[s][d] = false;
+    int d2;
+    if(one_left(values[s],&d2))
+    {
+        for(int s2=0; s2<20; s2++)
+        {
+            eliminate(values, hash(peers[s][s2]), d2);
+        }
+    }
+    for(int u=0; u<81; u++)
+    {
+        int ps;
+        if(one_left_units(values, u, d, s, &ps))
+        {
+            assign(values, ps, d);
+        }
+        
+    }
+
+}
+void assign(bool values[81][9], int s, int d)
+{
+    for(int d2=0; d2<9; d2++)
+    {
+        if(d2!=d && values[s][d2])
+        {
+            eliminate(values, s, d2);
+        }
+    }
+
+}
 void grid_values(char* grid, bool values[81][9])
 {
+    // assign true or false in the domain of squares according to a grid string
     for(int j=0; j<81; j++)
     {
-        if(grid[j]=='0' || grid[j]=='.')
-        {
             for(int k=0; k<9; k++)
             {
                 values[j][k] = true;
             }
-        }
-        else if(grid[j]>=49 || grid[j]<=57)
+    }
+    int idx=0, count=0;
+    while(grid[idx]!='\0' && count<81)
+    {
+        if(grid[idx]>=49 && grid[idx]<=57)
         {
-            for(int k=0; k<9; k++)
-            {
-                if(k==grid[j]-49)
-                {
-                    values[j][k] = true;
-                }
-                else
-                    values[j][k] = false;
-            }
+                assign(values, count, grid[idx]-49);
+                count++;
         }
+        if(grid[idx]=='0' || grid[idx]=='.')
+        {
+            count++;
+        }
+        idx++;
     }
 }
 void from_file(char* filename, char sep, bool values[MAX_GRIDS][81][9], int* n)
 {
+    // read from a files many grids and obtain T/F values of the domains of squares
     FILE* f;
     f = fopen(filename, "r");
     fseek(f, 0, SEEK_END);
@@ -280,30 +376,8 @@ void from_file(char* filename, char sep, bool values[MAX_GRIDS][81][9], int* n)
                 free(*(grids + i));
                 (*n)++;
             }
-            printf("\n");
             free(grids);
         }
     }
 
-}
-int main()
-{
-    initialize_array();
-    bool values[MAX_GRIDS][81][9];
-    int n;
-    from_file("top95.txt",'\n',values,&n);
-    printf("%d\n", n);
-    for(int i=0; i<n; i++)
-    {
-        for(int j=0; j<81; j++)
-        {
-            for(int k=0; k<9; k++)
-            {
-                printf("%d ",values[i][j][k]);
-            }
-            printf("\n");
-        }
-        printf("\n");
-    }
-    return 0;
 }
