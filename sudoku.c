@@ -4,8 +4,6 @@
 #include <string.h>
 #include <assert.h>
 
-// all the squares of the units with all different constraint on the board
-int unitlist[27][9]; // 27x9
 
 // the dictionary to look for the units where (squares in a unit are diff) a square is placed
 int units[81][3][9];
@@ -115,6 +113,8 @@ bool in(int s, int array[], int length)
 
 void initialize_array()
 {
+    // all the squares of the units with all different constraint on the board
+    int unitlist[27][9]; // 27x9
     // initialize all the global variables
     for(int i=0;i<9;i++)
     {
