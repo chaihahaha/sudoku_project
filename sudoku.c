@@ -4,13 +4,13 @@
 #include <string.h>
 #include <assert.h>
 
-// all the row-column char pair of the units with all different constraint on the board
+// all the squares of the units with all different constraint on the board
 int unitlist[27][9]; // 27x9
 
-// the dictionary to look for the units (squares in unit are diff) a char pair is placed
+// the dictionary to look for the units where (squares in a unit are diff) a square is placed
 int units[81][3][9];
 
-// the dictionary to look for all peers (squares with all diff constraint) of a char pair
+// the dictionary to look for all peers (squares with all diff constraint) of a square
 int peers[81][20];
 
 bool in(int s, int array[], int length);
@@ -102,7 +102,7 @@ char** str_split(char* a_str, const char a_delim)
 
 bool in(int s, int array[], int length)
 {
-    // if char pair "pair" (coordinate of a grid) is in a char-pair array "array" of length "length", return true, else return false
+    // if "s" is in "array" of "length", return true, else return false
     for(int i=0;i<length;i++)
     {
         if(s==array[i])
@@ -115,6 +115,7 @@ bool in(int s, int array[], int length)
 
 void initialize_array()
 {
+    // initialize all the global variables
     for(int i=0;i<9;i++)
     {
         for(int j=0;j<9;j++)
