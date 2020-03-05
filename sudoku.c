@@ -29,29 +29,28 @@ void print_pair(char pair[2]);
 char hash(char pair[2]);
 bool in(char pair[2], char array[][2], int length);
 void initialize_array();
-bool one_left(bool values[9], int* d);
-bool one_left_units(bool values[81][9], int u, int d, int s, int* ps);
-void eliminate(bool values[81][9], int s, int d);
-void assign(bool values[81][9], int s, int d);
+int n_left(bool values[9], int* d);
+int n_left_units(bool values[81][9], int u, int d, int s, int* ps);
+bool eliminate(bool values[81][9], int s, int d);
+bool assign(bool values[81][9], int s, int d);
 void grid_values(char* grid, bool values[81][9]);
-void from_file(char* filename, char sep, bool values[MAX_GRIDS][81][9], int* n);
+char** from_file(char* filename, char sep);
+void parse_grid(char** grids, int n, bool values[81][9]);
+bool search(bool values[81][9]);
+
 int main()
 {
     initialize_array();
-    bool values[MAX_GRIDS][81][9]={true};
-    int n;
-    from_file("top95.txt",'\n',values,&n);
-    for(int i=0; i<n; i++)
+    char** grids = from_file("top95.txt",'\n');
+
+    bool values[MAX_GRIDS][81][9];
+    
+    int n=0;
+    while(*(grids+n))
     {
-        for(int j=0; j<81; j++)
-        {
-            for(int k=0; k<9; k++)
-            {
-                printf("%d ",values[i][j][k]);
-            }
-            printf("\n");
-        }
-        printf("\n");
+        parse_grid(grids,n,values[n]);
+        search(values[n]);
+        n++;
     }
     return 0;
 }
@@ -259,7 +258,7 @@ void initialize_array()
     //}
     
 }
-bool one_left(bool values[9], int* d)
+int n_left(bool values[9], int* d)
 {
     int count=0;
     for(int i=0; i<9; i++)
@@ -270,9 +269,9 @@ bool one_left(bool values[9], int* d)
             count++;
         }
     }
-    return count==1;
+    return count;
 }
-bool one_left_units(bool values[81][9], int u, int d, int s, int* ps)
+int n_left_units(bool values[81][9], int u, int d, int s, int* ps)
 {
     int count = 0;
     for(int i=0; i<9; i++)
@@ -285,41 +284,72 @@ bool one_left_units(bool values[81][9], int u, int d, int s, int* ps)
             *ps = s1;
         }
     }
-    return count==1;
+    return count;
 }
-void eliminate(bool values[81][9], int s, int d)
+bool eliminate(bool values[81][9], int s, int d)
 {
     if(!values[s][d])
-        return;
+        return true;
     values[s][d] = false;
     int d2;
-    if(one_left(values[s],&d2))
+    int n = n_left(values[s],&d2);
+    if(n==0)
     {
+        return false;
+    }
+    if(n==1)
+    {
+        int count = 0;
         for(int s2=0; s2<20; s2++)
         {
-            eliminate(values, hash(peers[s][s2]), d2);
+            if(!eliminate(values, hash(peers[s][s2]), d2))
+            {
+                count++;
+            }
+        }
+        if(count>0)
+        {
+            return false;
         }
     }
-    for(int u=0; u<81; u++)
+    for(int u=0; u<3; u++)
     {
         int ps;
-        if(one_left_units(values, u, d, s, &ps))
+        int n=n_left_units(values, u, d, s, &ps);
+        if(n==0)
         {
-            assign(values, ps, d);
+            return false;
+        }
+        if(n==1)
+        {
+            if(!assign(values, ps, d))
+            {
+                return false;
+            }
         }
         
     }
+    return true;
 
 }
-void assign(bool values[81][9], int s, int d)
+bool assign(bool values[81][9], int s, int d)
 {
+    int count = 0;
     for(int d2=0; d2<9; d2++)
     {
         if(d2!=d && values[s][d2])
         {
-            eliminate(values, s, d2);
+            if(!eliminate(values, s, d2))
+            {
+                count++;
+            }
         }
     }
+    if(count>0)
+    {
+        return false;
+    }
+    return true;
 
 }
 void grid_values(char* grid, bool values[81][9])
@@ -346,8 +376,17 @@ void grid_values(char* grid, bool values[81][9])
         }
         idx++;
     }
+        for(int j=0; j<81; j++)
+        {
+            for(int k=0; k<9; k++)
+            {
+                printf("%d ",values[j][k]);
+            }
+            printf("\n");
+        }
+        printf("\n");
 }
-void from_file(char* filename, char sep, bool values[MAX_GRIDS][81][9], int* n)
+char** from_file(char* filename, char sep)
 {
     // read from a files many grids and obtain T/F values of the domains of squares
     FILE* f;
@@ -361,23 +400,22 @@ void from_file(char* filename, char sep, bool values[MAX_GRIDS][81][9], int* n)
         fread(buffer, 1, length, f);
     }
     fclose(f);
-
-    *n = 0;
+    char** grids;
     if(buffer)
     {
-        char** grids = str_split(buffer, sep);
-        if(grids)
-        {
-            int i;
-            for(i=0; *(grids + i); i++)
-            {
-                char* grid = *(grids + i);
-                grid_values(grid, values[*n]);
-                free(*(grids + i));
-                (*n)++;
-            }
-            free(grids);
-        }
+        grids = str_split(buffer, sep);
     }
 
+    return grids;
 }
+void parse_grid(char** grids, int n, bool values[81][9])
+{
+    char* grid = *(grids+n);
+    grid_values(grid, values);
+    free(*(grids+n));
+}
+
+bool search(bool values[81][9])
+{
+}
+
