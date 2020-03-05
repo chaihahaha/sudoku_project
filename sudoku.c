@@ -269,6 +269,7 @@ void initialize_array()
 }
 int n_left(bool values[9], int* d)
 {
+    // count the nbr of possible values left in domain "values", if only one left, indicate it by digit "d"
     int count=0;
     for(int i=0; i<9; i++)
     {
@@ -282,6 +283,7 @@ int n_left(bool values[9], int* d)
 }
 int n_left_units(bool values[81][9], int u, int d, int s, int* ps)
 {
+    // count nbr of squares of a unit "u" of "s" where "d" can be placed, if only one left, indicate the square by "ps"
     int count = 0;
     for(int i=0; i<9; i++)
     {
@@ -298,6 +300,7 @@ int n_left_units(bool values[81][9], int u, int d, int s, int* ps)
 }
 bool eliminate(bool values[81][9], int s, int d)
 {
+    // eliminate "d" from the domain of "s", if domain is empty, contradict and return false, else return true
     if(!values[s][d])
         return true;
     values[s][d] = false;
@@ -344,6 +347,7 @@ bool eliminate(bool values[81][9], int s, int d)
 }
 bool assign(bool values[81][9], int s, int d)
 {
+    // assign "d" to the domain of "s" and eliminate all the other values, if contradict return false, else return true
     int count = 0;
     for(int d2=0; d2<9; d2++)
     {
@@ -364,7 +368,7 @@ bool assign(bool values[81][9], int s, int d)
 }
 void grid_values(char* grid, bool values[81][9])
 {
-    // assign true or false in the domain of squares according to a grid string
+    // assign values to the domain of squares according to a grid string
     for(int j=0; j<81; j++)
     {
             for(int k=0; k<9; k++)
@@ -392,7 +396,7 @@ void grid_values(char* grid, bool values[81][9])
 }
 char** from_file(char* filename, char sep)
 {
-    // read from a files many grids and obtain T/F values of the domains of squares
+    // read from a files many grids, split it and return the array of strings
     FILE* f;
     f = fopen(filename, "r");
     fseek(f, 0, SEEK_END);
@@ -414,12 +418,14 @@ char** from_file(char* filename, char sep)
 }
 void parse_grid(char** grids, int n, bool values[81][9])
 {
+    // parse the grids string and assign values grid by grid
     char* grid = *(grids+n);
     grid_values(grid, values);
     free(*(grids+n));
 }
 bool solved(bool values[81][9])
 {
+    // decide whether a grid is solved by scanning the values of domains of its squares
     int n, d2;
     for(int s=0; s<81; s++)
     {
@@ -433,6 +439,7 @@ bool solved(bool values[81][9])
 }
 bool search(bool values[81][9])
 {
+    // depth first search trying to assign possible values to squares with help of constraint propagation
     if(solved(values))
         return true;
     int min=10, s=0;
@@ -476,11 +483,6 @@ bool search(bool values[81][9])
                     return true;
                 }
             }
-            //else
-            //{
-            //    // assigning failed, trace back
-            //    return false;
-            //}
         }
     }
     return false;
