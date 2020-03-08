@@ -83,16 +83,16 @@ def search_propagate(G, affected):
     values = set(G[var])
     while values & set(G[var]):
         values &= set(G[var])
-        v = values.pop()
+        d = values.pop()
         G_cp = G.copy()
-        assign(G_cp, var, v)
+        assign(G_cp, var, d)
         affected = units[var]
         sol = search_propagate(G_cp, affected)
         if sol:
             return sol
         else:
-            if (var,v) in G.edges:
-                G.remove_edge(var,v)
+            if (var,d) in G.edges:
+                G.remove_edge(var,d)
                 for i in units[var]:
                     if not filtering(G, i):
                         return False
