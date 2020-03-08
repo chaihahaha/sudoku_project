@@ -1,4 +1,5 @@
 import networkx as nx
+import matplotlib.pyplot as plt
 from networkx.algorithms.bipartite.matching import hopcroft_karp_matching
 def cross(A, B):
     "Cross product of elements in A and elements in B."
@@ -16,16 +17,18 @@ def grid_values(grid):
     assert len(ints) == 81
     return {k:v for k,v in dict(list(zip(squares, ints))).items() if v!=0}
 
-def filtering(GG, x):
+def filtering(GG, u):
     v = set()
-    for i in x:
+    for i in unitlist[u]:
+        if not set(GG[i]):
+            return False
         v |= set(GG[i])
-    G = GG.subgraph(x+list(v))
-    max_matching=hopcroft_karp_matching(G, x)
+    G = GG.subgraph(unitlist[u]+list(v))
+    max_matching=hopcroft_karp_matching(G, unitlist[u])
     max_matching=[(k,v) for k,v in max_matching.items()]
     v2x = [p if len(p[1])==2 else p[::-1] for p in list(map(tuple, set(map(frozenset,G.edges)) - set(map(frozenset,max_matching))))]
     x2v = [p if len(p[0])==2 else p[::-1] for p in max_matching]
-    assert set([i for p in v2x+x2v for i in p])==set(G.nodes)
+    assert {i for p in G.edges for i in p}==set(G.nodes)
     GM=nx.DiGraph(v2x+x2v)
     used=set(map(frozenset,max_matching))
     for i in nx.strongly_connected_components(GM):
@@ -41,7 +44,50 @@ def filtering(GG, x):
     affected_units = set()
     for e in unused:
         affected_units |= units[e[0] if len(e[0])==2 else e[1]]
-    return affected_units
+    for unit in list(affected_units - {u}):
+        if not filtering(GG, unit):
+            return False
+    return True
+
+def full_filtering(G):
+    for i in range(len(unitlist)):
+        if not filtering(G,i):
+            return False
+    return True
+
+
+def solved(G):
+    for i in range(9):
+        for j in range(9):
+            if len(G[(i,j)])!=1:
+                return False
+    return True
+
+def assign(G, var, value):
+    G.remove_edges_from([e for e in G.edges(var) if value not in e])
+
+def min_domain_variable(G):
+    min_domain=10
+    for i in range(9):
+        for j in range(9):
+            if len(G[(i,j)])>1 and len(G[(i,j)])<min_domain:
+                min_domain = len(G[(i,j)])
+                min_var = (i,j)
+    return min_var
+def propagate_recursive(G):
+    if not full_filtering(G):
+        return False
+    if solved(G):
+        return G
+    var = min_domain_variable(G)
+    values = list(G[var])
+    for v in values:
+        G_cp = G.copy()
+        assign(G_cp, var, v)
+        sol = propagate_recursive(G_cp)
+        if sol:
+            return sol
+    return False;
 
 def solve(value):
     d = {}
@@ -53,14 +99,15 @@ def solve(value):
                 d[(i,j)] = digits
     edges=[(k,v)  for k in d.keys() for v in d[k]]
     G=nx.Graph(edges)
-    affected_units = [i for i in range(len(unitlist))]
-    while affected_units:
-        u = affected_units.pop(0)
-        new_affected = list(filtering(G, unitlist[u]) - {u})
-        affected_units += new_affected
-    for i in range(9):
-        for j in range(9):
-            print((i,j),list(G[(i,j)]))
+    G= propagate_recursive(G)
+    if G:
+        print(solved(G))
+        for i in range(9):
+            for j in range(9):
+                print(list(G[(i,j)])[0],end=" ")
+            print()
+    else:
+        print("Fail")
 
 digits   = '123456789'
 rows     = [i for i in range(9)]
@@ -80,8 +127,14 @@ units = {(i,j):set() for i in range(9) for j in range(9)}
 for u in range(len(unitlist)):
     for e in unitlist[u]:
         units[e].add(u)
-
 # read the grids as dictionarys from index pair to assigned digit
 value_dics = [grid_values(grid) for grid in from_file("top95.txt")]
 for value in value_dics:
+    for i in range(9):
+        for j in range(9):
+            if (i,j) in value.keys():
+                print(value[(i,j)],end=" ")
+            else:
+                print(".", end=" ")
+        print()
     solve(value)
