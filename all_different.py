@@ -18,6 +18,7 @@ def grid_values(grid):
     return {k:v for k,v in dict(list(zip(squares, ints))).items() if v!=0}
 
 def filtering(GG, u):
+    # filter GG with constraint u and return if GG is still satisfiable
     v = set()
     for i in unitlist[u]:
         if not set(GG[i]):
@@ -50,6 +51,7 @@ def filtering(GG, u):
     return True
 
 def solved(G):
+    # return if G is solved
     for i in range(9):
         for j in range(9):
             if len(G[(i,j)])!=1:
@@ -57,9 +59,11 @@ def solved(G):
     return True
 
 def assign(G, var, value):
+    # assign "value" to variable "var"
     G.remove_edges_from([e for e in G.edges(var) if value not in e])
 
 def min_domain_variable(G):
+    # return the varible with the minimum size of domain
     min_domain=10
     for i in range(9):
         for j in range(9):
@@ -69,14 +73,17 @@ def min_domain_variable(G):
     return min_var
 
 def search_propagate(G, affected):
+    # filtering with affected constraints and search by assigning value and propagate, return solution if exists, otherwise return False
     for i in affected:
         if not filtering(G,i):
             return False
     if solved(G):
         return G
     var = min_domain_variable(G)
-    values = list(G[var])
-    for v in values:
+    values = set(G[var])
+    while values & set(G[var]):
+        values &= set(G[var])
+        v = values.pop()
         G_cp = G.copy()
         assign(G_cp, var, v)
         affected = units[var]
@@ -86,9 +93,13 @@ def search_propagate(G, affected):
         else:
             if (var,v) in G.edges:
                 G.remove_edge(var,v)
+                for i in units[var]:
+                    if not filtering(G, i):
+                        return False
     return False;
 
 def solve(value):
+    # solve the problem with predefined values in "value"
     d = {}
     for i in range(9):
         for j in range(9):
