@@ -1,5 +1,4 @@
 import networkx as nx
-import matplotlib.pyplot as plt
 from networkx.algorithms.bipartite.matching import hopcroft_karp_matching
 def cross(A, B):
     "Cross product of elements in A and elements in B."
