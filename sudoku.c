@@ -36,15 +36,15 @@ int main()
         parse_grid(grids,n,values);
         bool solved = search(values);
         printf("Solved? %s\n",solved?"Yes!":"No");
-        for(int j=0; j<81; j++)
-        {
-            int d;
-            n_left(values[j], &d);
-            printf("%d ",d+1);
-            if(j%9==8)
-                printf("\n");
-        }
-        printf("\n");
+        //for(int j=0; j<81; j++)
+        //{
+        //    int d;
+        //    n_left(values[j], &d);
+        //    printf("%d ",d+1);
+        //    if(j%9==8)
+        //        printf("\n");
+        //}
+        //printf("\n");
         n++;
     }
     free(grids);
