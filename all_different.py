@@ -49,13 +49,6 @@ def filtering(GG, u):
             return False
     return True
 
-def full_filtering(G):
-    for i in range(len(unitlist)):
-        if not filtering(G,i):
-            return False
-    return True
-
-
 def solved(G):
     for i in range(9):
         for j in range(9):
@@ -74,9 +67,11 @@ def min_domain_variable(G):
                 min_domain = len(G[(i,j)])
                 min_var = (i,j)
     return min_var
-def propagate_recursive(G):
-    if not full_filtering(G):
-        return False
+
+def search_propagate(G, affected):
+    for i in affected:
+        if not filtering(G,i):
+            return False
     if solved(G):
         return G
     var = min_domain_variable(G)
@@ -84,9 +79,13 @@ def propagate_recursive(G):
     for v in values:
         G_cp = G.copy()
         assign(G_cp, var, v)
-        sol = propagate_recursive(G_cp)
+        affected = units[var]
+        sol = search_propagate(G_cp, affected)
         if sol:
             return sol
+        else:
+            if (var,v) in G.edges:
+                G.remove_edge(var,v)
     return False;
 
 def solve(value):
@@ -99,9 +98,10 @@ def solve(value):
                 d[(i,j)] = digits
     edges=[(k,v)  for k in d.keys() for v in d[k]]
     G=nx.Graph(edges)
-    G= propagate_recursive(G)
+    G= search_propagate(G, range(len(unitlist)))
     if G:
-        print(solved(G))
+        print("Solved?", solved(G))
+        print("Solution:")
         for i in range(9):
             for j in range(9):
                 print(list(G[(i,j)])[0],end=" ")
@@ -130,6 +130,7 @@ for u in range(len(unitlist)):
 # read the grids as dictionarys from index pair to assigned digit
 value_dics = [grid_values(grid) for grid in from_file("top95.txt")]
 for value in value_dics:
+    print("Problem:")
     for i in range(9):
         for j in range(9):
             if (i,j) in value.keys():
