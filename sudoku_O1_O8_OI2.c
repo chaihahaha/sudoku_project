@@ -269,6 +269,8 @@ bool eliminate(bool values[81][9], int s, int d)
     {
         return false;
     }
+
+    // O1 propagator
     if(n==1)
     {
         for(int s2=0; s2<20; s2++)
@@ -279,6 +281,8 @@ bool eliminate(bool values[81][9], int s, int d)
             }
         }
     }
+
+    // O8 propagator
     for(int u=0; u<3; u++)
     {
         int ps;
@@ -297,52 +301,82 @@ bool eliminate(bool values[81][9], int s, int d)
         }
         
     }
+
+    // OI2 propagator
     int tmp;
-    n=n_left(values[s], &tmp);
-    if(n>1)
+    for(int u2=0; u2<2; u2++)
     {
-        for(int u=0; u<3; u++)
+        for(int u1=u2+1; u1<3; u1++)
         {
-            // if "s" has a subset of digits which is locked candicates for unit "u"
-            bool locked[9];
-            for(int d=0; d<9; d++)
+            // if the intersection has a subset of digits which is locked candicates for unit "u"
+            bool locked[9],intersection[81],unit2[81];
+            for(int i=0; i<81; i++)
             {
-                locked[d] = values[s][d];
+                intersection[i]=false;
+                unit2[i]=false;
+            }
+            for(int i=0; i<9; i++)
+            {
+                intersection[units[s][u1][i]]=true;
+                unit2[units[s][u2][i]]=true;
+                locked[i]=false;
+            }
+
+
+            for(int i=0; i<81; i++)
+            {
+                // for square i in intersection
+                intersection[i] &= unit2[i];
+                if(intersection[i])
+                {
+                    for(int d=0; d<9; d++)
+                    {
+                        // if i have d, d can be locked
+                        if(values[i][d])
+                        {
+                            locked[d] = true;
+                        }
+                    }
+                }
             }
             for(int i=0; i<9; i++)
             {
                 // set subtraction
                 for(int d=0; d<9; d++)
                 {
-                    // if "s" has a digit "d"
-                    if(values[units[s][u][i]][d])
+                    // if one square in unit "u" other than "intersection" has a digit "d"
+                    if(values[units[s][u2][i]][d] && (!intersection[units[s][u2][i]]))
                     {
                         locked[d]=false;
                     }
                 }
             }
-            if(n_left(locked, &tmp)>1)
+            // if "u1" or "u2" is a box
+            if(units[s][u2][3]-units[s][u2][0]==9 || units[s][u1][3]-units[s][u1][0]==9)
             {
-                for(int u1=0; u1<3; u1++)
+                // for the other unit "u1", remove locked from not intersected squares
+                for(int j=0; j<9; j++)
                 {
-                    // for the other units "u1", remove locked from all squares
-                    if(u1!=u)
+                    // eliminate locked from unit "u1" other than intersection
+                    for(int d1=0; d1<9; d1++)
                     {
-                        for(int j=0; j<9; j++)
+                        int square_u1j = units[s][u1][j];
+                        if(values[square_u1j][d1] && locked[d1] && (!intersection[square_u1j]))
                         {
-                            // set subtraction
-                            for(int d1=0; d1<9; d1++)
+                            if(!eliminate(values, units[s][u1][j],d1))
                             {
-                                if(locked[d])
-                                {
-                                    if(!eliminate(values, units[s][u1][j],d))
-                                    {
-                                        return false;
-                                    }
-                                }
+                                return false;
                             }
                         }
                     }
+                }
+            }
+            else
+            {
+                // back jumping
+                if(n_left(locked, &tmp)>1)
+                {
+                    return false;
                 }
             }
         }
