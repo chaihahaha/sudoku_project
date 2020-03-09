@@ -297,44 +297,48 @@ bool eliminate(bool values[81][9], int s, int d)
         }
         
     }
-    for(int u=0; u<3; u++)
+    int tmp;
+    n=n_left(values[s], &tmp);
+    if(n>1)
     {
-        // if "s" has a subset of digits which is locked candicates for unit "u"
-        bool locked[9];
-        for(int d=0; d<9; d++)
+        for(int u=0; u<3; u++)
         {
-            locked[d] = values[s][d];
-        }
-        int tmp;
-        for(int i=0; i<9; i++)
-        {
-            // set subtraction
+            // if "s" has a subset of digits which is locked candicates for unit "u"
+            bool locked[9];
             for(int d=0; d<9; d++)
             {
-                // if "s" has a digit "d"
-                if(values[units[s][u][i]][d])
+                locked[d] = values[s][d];
+            }
+            for(int i=0; i<9; i++)
+            {
+                // set subtraction
+                for(int d=0; d<9; d++)
                 {
-                    locked[d]=false;
+                    // if "s" has a digit "d"
+                    if(values[units[s][u][i]][d])
+                    {
+                        locked[d]=false;
+                    }
                 }
             }
-        }
-        if(n_left(locked, &tmp)>1)
-        {
-            for(int u1=0; u1<3; u1++)
+            if(n_left(locked, &tmp)>1)
             {
-                // for the other units "u1", remove locked from all squares
-                if(u1!=u)
+                for(int u1=0; u1<3; u1++)
                 {
-                    for(int j=0; j<9; j++)
+                    // for the other units "u1", remove locked from all squares
+                    if(u1!=u)
                     {
-                        // set subtraction
-                        for(int d1=0; d1<9; d1++)
+                        for(int j=0; j<9; j++)
                         {
-                            if(locked[d])
+                            // set subtraction
+                            for(int d1=0; d1<9; d1++)
                             {
-                                if(!eliminate(values, units[s][u1][j],d))
+                                if(locked[d])
                                 {
-                                    return false;
+                                    if(!eliminate(values, units[s][u1][j],d))
+                                    {
+                                        return false;
+                                    }
                                 }
                             }
                         }
@@ -343,8 +347,6 @@ bool eliminate(bool values[81][9], int s, int d)
             }
         }
     }
-
-
     return true;
 
 }
