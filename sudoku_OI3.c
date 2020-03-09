@@ -271,17 +271,12 @@ bool eliminate(bool values[81][9], int s, int d)
     }
     if(n==1)
     {
-        int count = 0;
         for(int s2=0; s2<20; s2++)
         {
             if(!eliminate(values, peers[s][s2], d2))
             {
-                count++;
+                return false;
             }
-        }
-        if(count>0)
-        {
-            return false;
         }
     }
     for(int u=0; u<3; u++)
@@ -294,6 +289,7 @@ bool eliminate(bool values[81][9], int s, int d)
         }
         if(n==1)
         {
+            // if the eliminated value "d" can be assigned to a square where "s" is located, then assign
             if(!assign(values, ps, d))
             {
                 return false;
@@ -301,26 +297,69 @@ bool eliminate(bool values[81][9], int s, int d)
         }
         
     }
+    for(int u=0; u<3; u++)
+    {
+        // if "s" has a subset of digits which is locked candicates for unit "u"
+        bool locked[9];
+        for(int d=0; d<9; d++)
+        {
+            locked[d] = values[s][d];
+        }
+        int tmp;
+        for(int i=0; i<9; i++)
+        {
+            // set subtraction
+            for(int d=0; d<9; d++)
+            {
+                // if "s" has a digit "d"
+                if(values[units[s][u][i]][d])
+                {
+                    locked[d]=false;
+                }
+            }
+        }
+        if(n_left(locked, &tmp)>1)
+        {
+            for(int u1=0; u1<3; u1++)
+            {
+                // for the other units "u1", remove locked from all squares
+                if(u1!=u)
+                {
+                    for(int j=0; j<9; j++)
+                    {
+                        // set subtraction
+                        for(int d1=0; d1<9; d1++)
+                        {
+                            if(locked[d])
+                            {
+                                if(!eliminate(values, units[s][u1][j],d))
+                                {
+                                    return false;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+
     return true;
 
 }
 bool assign(bool values[81][9], int s, int d)
 {
     // assign "d" to the domain of "s" and eliminate all the other values, if contradict return false, else return true
-    int count = 0;
     for(int d2=0; d2<9; d2++)
     {
         if(d2!=d && values[s][d2])
         {
             if(!eliminate(values, s, d2))
             {
-                count++;
+                return false;
             }
         }
-    }
-    if(count>0)
-    {
-        return false;
     }
     return true;
 
