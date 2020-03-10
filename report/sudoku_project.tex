@@ -314,9 +314,10 @@
                         \EndIf
                         \State Get the variable $x_{min}$ with the minimum cardinality of domain $|D(x_{min})|$.
                         \For{$d$ in $D(x_{min})$}
-                            \State assign $d$ to variable $x_{min}$ and propagate constraints in $\mathcal V$
+                            \State $\mathcal V' \gets \mathcal V$ \Comment{Back up in case of backtracking}
+                            \State assign $d$ to variable $x_{min}$ and propagate constraints in $\mathcal V'$
                             \If{assigning is successful}
-                                \State $\mathcal V'\gets$ \Call{SearchMRV}{$\mathcal V$}
+                                \State $\mathcal V'\gets$ \Call{SearchMRV}{$\mathcal V'$}
                                 \If{$\mathcal V'\neq F$}
                                     \State \Return $\mathcal V'$
                                 \EndIf
@@ -369,14 +370,15 @@
                         \EndIf
                         \State Get the variable $x_{min}$ with the minimum cardinality of domain $|D(x_{min})|$.
                         \For{$d$ in $D(x_{min})$}
+                            \State $\mathcal V' \gets \mathcal V$ \Comment{Back up in case of backtracking}
                             \For{A set of variables $Y$ having AllDifferent constraint with $x_{min}$(For Sudoku problem, if $U$ is a unit, then $Y=U\setminus \{x_{min}\}$)}
                                 \If{$D(x_{min})\cap D(Y)=\emptyset$}
                                     \State \Return F  \Comment{Use nogood to backjump}
                                 \EndIf
                             \EndFor
-                            \State assign $d$ to variable $x_{min}$ and propagate constraints in $\mathcal V$
+                            \State assign $d$ to variable $x_{min}$ and propagate constraints in $\mathcal V'$
                             \If{assigning is successful}
-                                \State $\mathcal V'\gets$ \Call{SearchCDB}{$\mathcal V$}
+                                \State $\mathcal V'\gets$ \Call{SearchCDB}{$\mathcal V'$}
                                 \If{$\mathcal V'\neq F$}
                                     \State \Return $\mathcal V'$
                                 \EndIf
