@@ -85,7 +85,7 @@
             \begin{definition}
                 (Instantiation) Given a network $N=\langle X,D,C\rangle$,
 
-                An instantiation $I$ on $Y=\langle x_1,\cdots,x_k\rangle \subseteq X$ is an assignment of values $d_1,\cdots, d_k$ to the variables $x_1, \cdots, x_k$ i.e. $I$ is a tuple on $Y$. $I$ can be denoted by $\{x_1\leftarrow d_1, \cdots, x_k\leftarrow d_k\}=\langle d_1, \cdots, d_k\rangle$.
+                An instantiation $I$ on $Y=\langle x_1,\cdots,x_k\rangle \subseteq X$ is an assignment of values $d_1,\cdots, d_k$ to the variables $x_1, \cdots, x_k$ i.e. $I$ is a tuple on $Y$. $I$ can be denoted by $\{x_1\gets d_1, \cdots, x_k\gets d_k\}=\langle d_1, \cdots, d_k\rangle$.
 
                 An instantiation $I$ on $Y$ is valid if $\forall x_i\in Y, I[x_i]\in D(x_i)$.
 
@@ -124,7 +124,7 @@
             \begin{definition}
                 (Hyper Arc Consistency) Given a network $N=\langle X,D,C\rangle$, a constraint $c\in C$ and a variable $x_i\in X(c)$,
 
-                A value $d_i\in D(x_i)$ is consistent with $c$ in $D$ iff there exists a valid tuple $d$ satisfing $c$ such that $d_i=d[x_i]$. Such a tuple is called a support for assigning $x_i\leftarrow d_i$ on $c$.
+                A value $d_i\in D(x_i)$ is consistent with $c$ in $D$ iff there exists a valid tuple $d$ satisfing $c$ such that $d_i=d[x_i]$. Such a tuple is called a support for assigning $x_i\gets d_i$ on $c$.
 
                 The domain $D$ is hyper arc consistent on $c$ for $x_i$ iff all values in $D(x_i)$ are consistent with $c$ in $D$, i.e. $D(x_i)\subseteq \pi_{x_i} (c\cap \pi_{X(c)} (D))$.
 
@@ -222,24 +222,24 @@
                         \If{not $solvable(G_g)$}
                             \State \Return $F$
                         \EndIf
-                        \State $G\leftarrow G_g[U\cup D(U)]$ \Comment{Get the induced subgraph to perform HAC locally}
-                        \State $M\leftarrow$ \Call{HopcroftCarpMatching}{$G, U$}
-                        \State $A_{dx}\leftarrow \{(d_i,x_i|\ \{d_i,x_i\}\in E(G)\setminus M \}$\Comment{Arcs from value to variable}
-                        \State $A_{xd}\leftarrow \{(x_i,d_i|\ \{x_i,d_i\}\in M\}$ \Comment{Arcs from variable to value}
-                        \State $G_M\leftarrow$ \Call{DiGraph}{$A_{dx}\cup A_{xd}$}
-                        \State $S\leftarrow M$
+                        \State $G\gets G_g[U\cup D(U)]$ \Comment{Get the induced subgraph to perform HAC locally}
+                        \State $M\gets$ \Call{HopcroftCarpMatching}{$G, U$}
+                        \State $A_{dx}\gets \{(d_i,x_i|\ \{d_i,x_i\}\in E(G)\setminus M \}$\Comment{Arcs from value to variable}
+                        \State $A_{xd}\gets \{(x_i,d_i|\ \{x_i,d_i\}\in M\}$ \Comment{Arcs from variable to value}
+                        \State $G_M\gets$ \Call{DiGraph}{$A_{dx}\cup A_{xd}$}
+                        \State $S\gets M$
                         \For{$i$ in \Call{StronglyConnedtedComponents}{$G_M$}}
-                            \State $S \leftarrow S\cup A(G_M[i])$
+                            \State $S \gets S\cup A(G_M[i])$
                         \EndFor
-                        \State $V_{free} \leftarrow V(G)\setminus V(M)$
+                        \State $V_{free} \gets V(G)\setminus V(M)$
                         \If{$V_{free}\neq \emptyset$}
                             \For{$i$ in \Call{BFSNext}{$G_M,V_{free}$}} \Comment{$i$ is the set of next arcs}
                                 \For{$j$ in $i$}
-                                    \State $S\leftarrow S\cup j$
+                                    \State $S\gets S\cup j$
                                 \EndFor
                             \EndFor
                         \EndIf
-                        \State $G_g\leftarrow G_g \setminus(E(G)\setminus S)$
+                        \State $G_g\gets G_g \setminus(E(G)\setminus S)$
                     \EndFunction
                 \end{algorithmic}
             \end{algorithm}
@@ -269,7 +269,7 @@
                         \EndIf
                         \If{Exactly one $d', s.t. \mathcal V(x_i, d')=T$}
                             \For{$x_p\in Peers(x_i)$}
-                                \State $\mathcal V\leftarrow$ \Call{Eliminate}{$\mathcal V, x_p, d'$} \Comment{O1 propagator}
+                                \State $\mathcal V\gets$ \Call{Eliminate}{$\mathcal V, x_p, d'$} \Comment{O1 propagator}
                                 \If{$\mathcal V= F$}
                                     \State \Return $F$
                                 \EndIf
@@ -284,9 +284,9 @@
                             \EndIf
                         \EndFor
                         \For{Box unit $U_1\in Units(x_i)$ and another unit $U_2\neq U_1, U_2\in Units(x_i)$}
-                            \State Get locked candidate set $L\leftarrow D(U_1\cap U_2)\setminus D(U_1\setminus U_2)$
+                            \State Get locked candidate set $L\gets D(U_1\cap U_2)\setminus D(U_1\setminus U_2)$
                             \For{$x_u$ in $U_2\setminus U_1$ and $d_u$ in $L$}
-                                \State $\mathcal V\leftarrow$ \Call{Eliminate}{$\mathcal V, x_u, d_u$} \Comment{Eliminate all the values in locked candidate set from $U_2\setminus U_1$(OI2)}
+                                \State $\mathcal V\gets$ \Call{Eliminate}{$\mathcal V, x_u, d_u$} \Comment{Eliminate all the values in locked candidate set from $U_2\setminus U_1$(OI2)}
                                 \If{$\mathcal V=F$}
                                     \State \Return $F$
                                 \EndIf
@@ -316,7 +316,7 @@
                         \For{$d$ in $D(x_{min})$}
                             \State assign $d$ to variable $x_{min}$ and propagate constraints in $\mathcal V$
                             \If{assigning is successful}
-                                \State $\mathcal V'\leftarrow$ \Call{SearchMRV}{$\mathcal V$}
+                                \State $\mathcal V'\gets$ \Call{SearchMRV}{$\mathcal V$}
                                 \If{$\mathcal V'\neq F$}
                                     \State \Return $\mathcal V'$
                                 \EndIf
@@ -376,7 +376,7 @@
                             \EndFor
                             \State assign $d$ to variable $x_{min}$ and propagate constraints in $\mathcal V$
                             \If{assigning is successful}
-                                \State $\mathcal V'\leftarrow$ \Call{SearchCDB}{$\mathcal V$}
+                                \State $\mathcal V'\gets$ \Call{SearchCDB}{$\mathcal V$}
                                 \If{$\mathcal V'\neq F$}
                                     \State \Return $\mathcal V'$
                                 \EndIf
