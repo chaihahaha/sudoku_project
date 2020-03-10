@@ -1,4 +1,5 @@
 import networkx as nx
+import time
 from networkx.algorithms.bipartite.matching import hopcroft_karp_matching
 def cross(A, B):
     "Cross product of elements in A and elements in B."
@@ -108,16 +109,19 @@ def solve(value):
                 d[(i,j)] = digits
     edges=[(k,v)  for k in d.keys() for v in d[k]]
     G=nx.Graph(edges)
+    tik = time.time()
     G= search_propagate(G, range(len(unitlist)))
-    if G:
-        print("Solved?", solved(G))
-        print("Solution:")
-        for i in range(9):
-            for j in range(9):
-                print(list(G[(i,j)])[0],end=" ")
-            print()
-    else:
-        print("Fail")
+    tok = time.time()
+    print(tok-tik)
+    #if G:
+    #    print("Solved?", solved(G))
+    #    print("Solution:")
+    #    for i in range(9):
+    #        for j in range(9):
+    #            print(list(G[(i,j)])[0],end=" ")
+    #        print()
+    #else:
+    #    print("Fail")
 
 digits   = '123456789'
 rows     = [i for i in range(9)]
@@ -140,12 +144,12 @@ for u in range(len(unitlist)):
 # read the grids as dictionarys from index pair to assigned digit
 value_dics = [grid_values(grid) for grid in from_file("top95.txt")]
 for value in value_dics:
-    print("Problem:")
-    for i in range(9):
-        for j in range(9):
-            if (i,j) in value.keys():
-                print(value[(i,j)],end=" ")
-            else:
-                print(".", end=" ")
-        print()
+    #print("Problem:")
+    #for i in range(9):
+    #    for j in range(9):
+    #        if (i,j) in value.keys():
+    #            print(value[(i,j)],end=" ")
+    #        else:
+    #            print(".", end=" ")
+    #    print()
     solve(value)

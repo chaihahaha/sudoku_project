@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-
+#include <sys/time.h>
 
 // the dictionary to look for the units where (squares in a unit are diff) a square is placed
 int units[81][3][9];
@@ -29,13 +29,19 @@ int main()
     char** grids = from_file("top95.txt",'\n');
 
     bool values[81][9];
+    struct timeval tv1, tv2;
+    double time_used;
     
     int n=0;
     while(*(grids+n))
     {
         parse_grid(grids,n,values);
+        gettimeofday(&tv1, NULL);
         bool solved = search(values);
-        printf("Solved? %s\n",solved?"Yes!":"No");
+        gettimeofday(&tv2, NULL);
+        time_used = ((double) (tv2.tv_usec-tv1.tv_usec)) / 1000000 + (double) (tv2.tv_sec - tv1.tv_sec);
+        printf("%lf\n",time_used);
+        //printf("Solved? %s\n",solved?"Yes!":"No");
         //for(int j=0; j<81; j++)
         //{
         //    int d;
@@ -302,7 +308,7 @@ bool eliminate(bool values[81][9], int s, int d)
         
     }
 
-    // OI2 propagator
+     OI2 propagator
     int tmp;
     for(int u2=0; u2<2; u2++)
     {

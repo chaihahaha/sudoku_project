@@ -12,6 +12,7 @@
 \usepackage{hyperref} % add clickable link to tableofcontents
 \usepackage{enumitem} % use enumerate
 \usepackage{float} % for [H] label in figures
+\usepackage[toc,page]{appendix}
 
 \usepackage{fancyhdr} % add header and footer
 \pagestyle{fancy}
@@ -68,48 +69,7 @@
                 \caption{Example of input format}
             \end{figure}
 
-            For C language, the input grids can be parsed by the function \emph{grid\_values} which is as follows.
-            \begin{lstlisting}[frame=single, language=C]
-void grid_values(char* grid, bool values[81][9])
-{
-    // assign values to the domain of squares according to a grid string
-    for(int j=0; j<81; j++)
-    {
-            for(int k=0; k<9; k++)
-            {
-                values[j][k] = true;
-            }
-    }
-    int idx=0, count=0;
-    while(grid[idx]!='\0' && count<81)
-    {
-        if(grid[idx]>=49 && grid[idx]<=57)
-        {
-            if(!assign(values, count, grid[idx]-49))
-            {
-                printf("assigning failed!\n");
-            }
-            count++;
-        }
-        if(grid[idx]=='0' || grid[idx]=='.')
-        {
-            count++;
-        }
-        idx++;
-    }
-}
-            \end{lstlisting}
-
-            For the Python version, grids can be parsed with the following code.
-
-            \begin{lstlisting}[frame=single, language=python]
-digits   = '123456789'
-def grid_values(grid):
-    "Convert grid into a dict of {square: char} with '0' or '.' for empties."
-    ints = [int(c) if c in digits else 0 for c in grid ]
-    assert len(ints) == 81
-    return {k:v for k,v in dict(list(zip(squares, ints))).items() if v!=0}
-            \end{lstlisting}
+            The parsing code is included in Appendix \ref{solver} and \ref{c}.
 
 
     
@@ -179,49 +139,8 @@ def grid_values(grid):
             Sudoku can be viewed as a CSP $\mathcal P=\langle X, D, C\rangle$ where $X=\langle x_{11}, x_{12}, \cdots, x_{21}, \cdots, x_{99}\rangle$ is consisted of 81 variables corresponding to 81 squares, $D=(\{1..9\}\cap A(x_{11}))\times\cdots\times(\{1..9\}\cap A(x_{99}))$, where $A(x_{ij})$ is the set of preassigned values for variable $x_{ij}$,  $C=\{c(Y)|\ Y \text{ is the set of variables in a unit}\}$ and $c(Y)$ is AllDifferent constraint on the set of variables $Y$ which means $\forall x_i,x_j\in Y,
             x_i\neq x_j$
 
-            Ortools is a library with C, Python interface to solve operational research problems including constraint programming problems. The previous formalization of Sudoku problem as a CSP makes it possible to solve the Sudoku problem with the Constraint Programming solvers in Ortools. The Python code is as follows.
+            Ortools is a library with C, Python interface to solve operational research problems including constraint programming problems. The previous formalization of Sudoku problem as a CSP makes it possible to solve the Sudoku problem with the Constraint Programming solvers in Ortools. The Python code is placed in Appendix \ref{solver}.
 
-            \begin{lstlisting}[frame=single,language=python]
-from ortools.sat.python import cp_model
-def solve(values):
-    # initialize constraint programming model
-    model = cp_model.CpModel()
-
-    # initialize variable domains
-    x=[[var_from_domain(model, 'x'+str(i+1)+str(j+1), range(1,10)) for j in range(9)] for i in range(9)]
-
-
-    # shrink domain w.r.t. the assignment in the grid
-    for k,v in values.items():
-        x[k[0]][k[1]] = var_from_domain(model, 'x'+str(k[0]+1)+str(k[1]+1), [v])
-
-    # initialize a list of units, every square in a unit are all diff
-    unitlist = []
-    # column units
-    unitlist += [[x[i][j] for i in range(9)] for j in range(9)]
-    # row units
-    unitlist += [[x[i][j] for j in range(9)] for i in range(9)]
-    # box units
-    unitlist += [[x[i//3*3+j//3][i%3*3+j%3] for j in range(9)] for i in range(9)]
-
-    # add all diff constraint to every unit
-    for i in unitlist:
-        model.AddAllDifferent(i)
-
-    # initialize a solver
-    solver=cp_model.CpSolver()
-
-    # solve the CSP
-    status = solver.Solve(model)
-
-    # get the solution
-    solution = [[solver.Value(x[i][j]) for j in range(9)] for i in range(9)]
-
-    # print the solution
-    print('\n'.join([''.join(['{:2}'.format(item) for item in row])
-          for row in solution]))
-    print('\n')
-            \end{lstlisting}
             This code simply solves the problem with black box solvers and is not compatible for customized optimization. So next I will explore many different formalizations and solving techniques.
 
         \subsection {Transformation to SAT}
@@ -230,11 +149,19 @@ def solve(values):
 
             For a AllDifferent constraint on $n$ variables $x_i, i\in \{1..n\}$, we can decompose it into $\frac{n(n-1)}{2}$ pairwise disequality constraints $\land_{x_i,x_j\in V, i\neq j} x_i\neq x_j$.
 
-            Although I didn't perform the reduction from pairwise disequalities to properties in the paper by myself, I found the properties in \cite{lardeux2008overlapping} useful when implementing my constraint propagation algorithm, so I persist with the notations in the paper\cite{lardeux2008overlapping}.
+            Although I didn't perform the reduction from pairwise disequalities to properties in the paper by myself, I found the properties in \cite{lardeux2008overlapping} useful when implementing my constraint propagation algorithm, so I persist with the notations about \ref{Om} and \ref{OIm} in the paper\cite{lardeux2008overlapping}.
 
-            $$[Om] \quad \frac{<C \wedge Alldiff(V), D>| V^{\prime} \subset V \wedge D_{V^{\prime}}=\left\{d_{1}, \ldots, d_{m}\right\}}{<C \wedge Alldiff(V), D^{\prime}>| d_{1}, \ldots, d_{m} \notin D_{V \setminus V^{\prime}}}$$
+            \begin{align}
+                & \quad \frac{<C \wedge Alldiff(V), D>| V^{\prime} \subset V \wedge D_{V^{\prime}}=\left\{d_{1}, \ldots, d_{m}\right\}}{<C \wedge Alldiff(V), D^{\prime}>| d_{1}, \ldots, d_{m} \notin D_{V \setminus V^{\prime}}}
+                \label{Om}
+                \tag{Om}
+            \end{align}
 
-            $$[OIm] \quad \frac{<C \wedge_{i=1}^{m} Alldiff(V_{i}), D>| d \in D_{V} \wedge d \notin D_{V_{1} \setminus V}}{<C \wedge_{i=1}^{m} Alldiff(V_{i}), D^{\prime}>| d \notin \bigcup_{i=1}^{m} D_{V_{i} \backslash V}}$$
+            \begin{align}
+                & \quad \frac{<C \wedge_{i=1}^{m} Alldiff(V_{i}), D>| d \in D_{V} \wedge d \notin D_{V_{1} \setminus V}}{<C \wedge_{i=1}^{m} Alldiff(V_{i}), D^{\prime}>| d \notin \bigcup_{i=1}^{m} D_{V_{i} \backslash V}}
+                \label{OIm}
+                \tag{OIm}
+            \end{align}
 
 
 
@@ -283,7 +210,7 @@ def solve(values):
                 Let G be a graph and M a maximum-cardinality matching in G. An edge e belongs to some maximum-cardinality matching in G iff $e\in M$ or e in on an even-length M-alternating path starting at an M-free vertex, or e is on an even-length M-alternating circuit.
             \end{theorem}
 
-            So we have the HAC algorithm \ref{HAC} for AllDifferent constraints.
+            So I have the HAC algorithm \ref{HAC} for AllDifferent constraints.
 
             \begin{algorithm}
                 \caption{Search and propagate with HAC}
@@ -296,10 +223,10 @@ def solve(values):
                             \State \Return $F$
                         \EndIf
                         \State $G\leftarrow G_g[U\cup D(U)]$ \Comment{Get the induced subgraph to perform HAC locally}
-                        \State $M\leftarrow$ \Call{HopcroftCarpMatching}($G, U$)
+                        \State $M\leftarrow$ \Call{HopcroftCarpMatching}{$G, U$}
                         \State $A_{dx}\leftarrow \{(d_i,x_i|\ \{d_i,x_i\}\in E(G)\setminus M \}$\Comment{Arcs from value to variable}
                         \State $A_{xd}\leftarrow \{(x_i,d_i|\ \{x_i,d_i\}\in M\}$ \Comment{Arcs from variable to value}
-                        \State $G_M\leftarrow DiGraph(A_{dx}\cup A_{xd})$
+                        \State $G_M\leftarrow$ \Call{DiGraph}{$A_{dx}\cup A_{xd}$}
                         \State $S\leftarrow M$
                         \For{$i$ in \Call{StronglyConnedtedComponents}{$G_M$}}
                             \State $S \leftarrow S\cup A(G_M[i])$
@@ -317,8 +244,294 @@ def solve(values):
                 \end{algorithmic}
             \end{algorithm}
 
-            I implemented this algorithm in Python, by calling this filtering function recursively with backtracking can solve the sudoku within a few searches. The code is as follows.
+            I implemented this algorithm in Python, by calling this filtering function recursively with backtracking can solve the sudoku within a few searches. The code is shown in Appendix \ref{python}.
+                        
+
+            As stated in \cite{simonis2005sudoku}, the constraints interact in multiple ways and tightening with local consistency on each AllDifferent constraint alone cannot exploit all these relations and eliminate all the nogoods, i.e. cannot be backtrack free. So we have to balance between heavy constraint reasoning and propagation and brute force searching in case there is too much time speet on reasoning.
+
+            In the experiment of previous HAC algorithm which performs Régin Algorithm on each unit separately and propagate, the time cost can be even more than simply using GAC on decomposed binary constraints. Because the search
+            space prunned by constraint reasoning is not overwhelmingly large for some specific cases and the time spent on constraint reasoning is too much.
+        \subsection{Reduction Rules}
+
+            Inspired by the reduction rules \ref{Om} and \ref{OIm} found in \cite{lardeux2008managing,lardeux2008overlapping}, I implemented the algorithm \ref{eliminate} to perform constraint propagation with O1, O8 and OI2 redunction rules. This algorithm eliminates already assigned values from all the domains of its peers, which is O1 redunction rule. And if a value only appears once in the domains of a unit, assign the sqaure with the value, which is O8 reduction rule. For higher order consistency, when two units overlap
+            and the union of the domains of the intersected variables has no intersection with all the domains of other squares in a unit, eliminate the union from all the domains of the other unit, which is OI2.
+
+            \begin{algorithm}
+                \caption{Eliminate with propagation}
+                \label{eliminate}
+                \begin{algorithmic}[1]
+                    \Require Map $\mathcal V:X\times D(X) \to \{T,F\}$, $x_i\in X$, $d_j\in D(x_i)$
+                    \Ensure pruned map $\mathcal V$ if solvable, otherwise $F$.
+                    \Function{Eliminate}{$\mathcal V$, $x_i$, $d_j$}
+                        \State $\mathcal V(x_i, d_j)=F$
+                        \If{$\nexists d', s.t. \mathcal V(x_i, d')=T$}
+                            \State \Return $F$
+                        \EndIf
+                        \If{Exactly one $d', s.t. \mathcal V(x_i, d')=T$}
+                            \For{$x_p\in Peers(x_i)$}
+                                \State $\mathcal V\leftarrow$ \Call{Eliminate}{$\mathcal V, x_p, d'$} \Comment{O1 propagator}
+                                \If{$\mathcal V= F$}
+                                    \State \Return $F$
+                                \EndIf
+                            \EndFor
+                        \EndIf
+                        \For{Unit $U\in Units(x_i), U\subseteq X$}
+                            \If{Exactly one variable $x_u$ in $U\setminus \{x_i\}$ can be assigned with $d_j$} 
+                                \State Assign $x_u$ with value $d_j$ and propagate \Comment{O8 propagator}
+                                \If{Assign failed}
+                                    \State \Return $F$
+                                \EndIf
+                            \EndIf
+                        \EndFor
+                        \For{Box unit $U_1\in Units(x_i)$ and another unit $U_2\neq U_1, U_2\in Units(x_i)$}
+                            \State Get locked candidate set $L\leftarrow D(U_1\cap U_2)\setminus D(U_1\setminus U_2)$
+                            \For{$x_u$ in $U_2\setminus U_1$ and $d_u$ in $L$}
+                                \State $\mathcal V\leftarrow$ \Call{Eliminate}{$\mathcal V, x_u, d_u$} \Comment{Eliminate all the values in locked candidate set from $U_2\setminus U_1$(OI2)}
+                                \If{$\mathcal V=F$}
+                                    \State \Return $F$
+                                \EndIf
+                            \EndFor
+                        \EndFor
+
+                    \EndFunction
+                \end{algorithmic}
+            \end{algorithm}
+
+\chapter {Tree search}
+
+    \section {Searching Heuristics}
+        \subsection {Minimum Remaining Values}
+            According to \cite{golomb1965backtrack}, there is a MRV heuristic, which is the only heuristic used in my code because it is easy to implement and efficient enough.
+            \begin{algorithm}
+                \caption{SearchMRV}
+                \label{MRV}
+                \begin{algorithmic}[1]
+                    \Require Map $\mathcal V:X\times D(X) \to \{T,F\}$, $\mathcal V(x_i,d_j)=T$ if and only if there is a value $d_j$ in the domain $D(x_i)$ of variable $x_i$, otherwise $\mathcal V(x_i,d_j)=F$. 
+                    \Ensure $\mathcal V'$ if it is a solution, if no solution is found, $F$.
+                    \Function{SearchMRV}{$\mathcal V$}
+                        \If{solved$(\mathcal V)$}
+                            \State \Return $\mathcal V$
+                        \EndIf
+                        \State Get the variable $x_{min}$ with the minimum cardinality of domain $|D(x_{min})|$.
+                        \For{$d$ in $D(x_{min})$}
+                            \State assign $d$ to variable $x_{min}$ and propagate constraints in $\mathcal V$
+                            \If{assigning is successful}
+                                \State $\mathcal V'\leftarrow$ \Call{SearchMRV}{$\mathcal V$}
+                                \If{$\mathcal V'\neq F$}
+                                    \State \Return $\mathcal V'$
+                                \EndIf
+                            \EndIf
+                        \EndFor
+                        \State \Return $F$
+                    \EndFunction
+                \end{algorithmic}
+            \end{algorithm}
+
+        \subsection{Forward Checking}
+            Forward checking keeps arc consistency for a constraint $c(V)$ if only one variable $x_i\in V$ is not instantiated during the process of tree search\cite{golomb1965backtrack}. So forward checking for the binary decomposed AllDifferent constraint of Sudoku problem is equivalent to the process of eliminating the digit from rows, columns and boxes whenever a square is assigned a digit, which gives the algorithm \ref{FC}
+            \begin{algorithm}
+                \caption{Forward Checking}
+                \label{FC}
+                \begin{algorithmic}[1]
+                    \Require Map $\mathcal V:X\times D(X) \to \{T,F\}$, $x_i\in X$, $d_j\in D(x_i)$
+                    \Ensure pruned map $\mathcal V$ if solvable, otherwise $F$.
+                    \Function{ForwardChecking}{$\mathcal V$, $x_i$, $d_j$}
+                        \For{$\forall c_{ik}=\{ x_i\neq x_k\}= C(x_i,x_k)=C$ }
+                            \State $\mathcal V(x_k,d_j)=F$ \Comment{Eliminate $d_j$ from all the variables $x_k$ with constraint $c_{ik}$}
+                        \EndFor
+                        \If{$\forall x_i\in X, \exists d_j, \mathcal V(x_i,d_j)=T$}\Comment{If no contradiction in $\mathcal V$}
+                            \State \Return $\mathcal V$
+                        \Else
+                            \State \Return $F$
+                        \EndIf
+                    \EndFunction
+                \end{algorithmic}
+            \end{algorithm}
+
+        \subsection{Conflict-Directed Backjumping}
+            \begin{definition} (nogood) A nogood is a set of assignments and branching constraints that is not consistent with any solution\cite{rossi2006handbook}.
+            \end{definition}
+
+            Conflict Directed Backjumping(CBJ) is a technique that utilizes the predefined nogood which can help ruling out branches of search tree to perform several back tracking steps all at once\cite{prosser1993hybrid}.
+
+
+            For Sudoku problem, if $x_1,\cdots, x_9\in X$ are in the same unit, $|D(x_1)|>1$ and $D(x_1)\cap D(x_i)=\emptyset, x\in\{2,\cdots,9\}$, then the problem is not solvable. I use this nogood in my code to perform CBJ, which is algorithm \ref{backjumping}.
+
+             \begin{algorithm}
+                \caption{Conflict Directed Backjumping}
+                \label{backjumping}
+                \begin{algorithmic}[1]
+                    \Require Map $\mathcal V:X\times D(X) \to \{T,F\}$
+                    \Ensure $\mathcal V'$ if it is a solution, if no solution is found, $F$.
+                    \Function{SearchCDB}{$\mathcal V$}
+                        \If{solved$(\mathcal V)$}
+                            \State \Return $\mathcal V$
+                        \EndIf
+                        \State Get the variable $x_{min}$ with the minimum cardinality of domain $|D(x_{min})|$.
+                        \For{$d$ in $D(x_{min})$}
+                            \For{A set of variables $Y$ having AllDifferent constraint with $x_{min}$(For Sudoku problem, if $U$ is a unit, then $Y=U\setminus \{x_{min}\}$)}
+                                \If{$D(x_{min})\cap D(Y)=\emptyset$}
+                                    \State \Return F  \Comment{Use nogood to backjump}
+                                \EndIf
+                            \EndFor
+                            \State assign $d$ to variable $x_{min}$ and propagate constraints in $\mathcal V$
+                            \If{assigning is successful}
+                                \State $\mathcal V'\leftarrow$ \Call{SearchCDB}{$\mathcal V$}
+                                \If{$\mathcal V'\neq F$}
+                                    \State \Return $\mathcal V'$
+                                \EndIf
+                            \EndIf
+                        \EndFor
+                        \State \Return $F$
+                    \EndFunction
+                \end{algorithmic}
+            \end{algorithm}
+    \section {Comparisons}
+        Although AllDifferent constraint HAC algorithm will eliminate more search space, it is sometimes relatively slower because constraint reasoning might take more time than searching and backtracking. For all the other methods, I implemented them in one pure C program. I noticed that by adding OI2 reduction rule (which is only path consistency propagator), the performance of the algorithm sometimes even degenerate. I analyzed the algorithm and discovered that almost all higher order consistencies are
+        time consuming to perform, which may instead worsen the time cost, which is shown in the figure \ref{c2w} which compares the time cost of the same problem between C programs with and without OI2.
+
+        The solver in Ortools is used as a baseline in the comparisons, the result is shown in figure \ref{c2solver}, \ref{solver2p}.
+
+        Although the absolute time cost between the C version program(with O2, O8 and OI2) and the Python version(with HAC) is very huge, the relative time cost shown in figure \ref{c2p} is still useful to analyze the difference. We can observe that most of the time the C version tend to be much faster and even if the time cost of Python version is divided by a factor, the C version is still relatively faster. This indicates that there are too much constraint reasoning in the
+        Python programs which leads to too much time cost.
+        \begin{figure}[H]
+            \centering
+            \includegraphics[width=0.8\textwidth]{c2solver}
+            \caption{Time cost of Ortools solver and C version}
+            \label{c2solver}
+        \end{figure}
+
+        \begin{figure}[H]
+            \centering
+            \includegraphics[width=0.8\textwidth]{solver2p}
+            \caption{Time cost of Ortools solver and Python version}
+            \label{solver2p}
+        \end{figure}
+
+        \begin{figure}[H]
+            \centering
+            \includegraphics[width=0.8\textwidth]{c2p}
+            \caption{Time cost of Python version and C version}
+            \label{c2p}
+        \end{figure}
+
+        \begin{figure}[H]
+            \centering
+            \includegraphics[width=0.8\textwidth]{c2w}
+            \caption{Time cost of C version with and without OI2}
+            \label{c2w}
+        \end{figure}
+
+    \begin{appendices}
+        \chapter{Solving Sudoku with Ortools CP solver}
+            \label{solver}
+            \begin{lstlisting}[frame=single,language=python]
+from ortools.sat.python import cp_model
+import time
+
+def cross(A, B):
+    "Cross product of elements in A and elements in B."
+    return [(a,b) for a in A for b in B]
+
+def var_from_domain(model, name, domain):
+    "initialize a variable with integer domain defined by domain"
+    domain = cp_model.Domain.FromIntervals([[i] for i in domain])
+    val = model.NewIntVarFromDomain(domain, name)
+    return val
+
+def from_file(filename, sep='\n'):
+    "Parse a file into a list of strings, separated by sep."
+    with open(filename,"r") as f:
+        s=f.read()
+    return s.strip().split(sep)
+
+def grid_values(grid):
+    "Convert grid into a dict of {square: char} with '0' or '.' for empties."
+    ints = [int(c) if c in digits else 0 for c in grid ]
+    assert len(ints) == 81
+    return {k:v for k,v in dict(list(zip(squares, ints))).items() if v!=0}
+
+def solve(values):
+    # initialize constraint programming model
+    model = cp_model.CpModel()
+
+    # initialize variable domains
+    x=[[var_from_domain(model, 'x'+str(i+1)+str(j+1), range(1,10)) for j in range(9)] for i in range(9)]
+
+
+    # shrink domain w.r.t. the assignment in the grid
+    for k,v in values.items():
+        x[k[0]][k[1]] = var_from_domain(model, 'x'+str(k[0]+1)+str(k[1]+1), [v])
+
+    # initialize a list of units, every square in a unit are all diff
+    unitlist = []
+    # column units
+    unitlist += [[x[i][j] for i in range(9)] for j in range(9)]
+    # row units
+    unitlist += [[x[i][j] for j in range(9)] for i in range(9)]
+    # box units
+    unitlist += [[x[i//3*3+j//3][i%3*3+j%3] for j in range(9)] for i in range(9)]
+
+    # add all diff constraint to every unit
+    for i in unitlist:
+        model.AddAllDifferent(i)
+
+    # initialize a solver
+    solver=cp_model.CpSolver()
+
+    tik = time.time()
+    # solve the CSP
+    status = solver.Solve(model)
+    tok = time.time()
+    print(tok-tik)
+
+    # get the solution
+    solution = [[solver.Value(x[i][j]) for j in range(9)] for i in range(9)]
+
+    # print the solution
+    #print('\n'.join([''.join(['{:2}'.format(item) for item in row])
+    #      for row in solution]))
+    #print('\n')
+
+
+digits   = '123456789'
+rows     = [i for i in range(9)]
+cols     = [i for i in range(9)]
+# index pair(position) to the variable x with domain of the square
+squares  = cross(rows, cols)
+
+# read the grids as dictionarys from index pair to assigned digit
+value_dics = [grid_values(grid) for grid in from_file("top95.txt")]
+
+# solve all the sudokus
+for i in value_dics:
+    solve(i)
+            \end{lstlisting}
+            All the codes are available on \url{https://github.com/chaihahaha/sudoku_project}.
+
+
+        \chapter{Solving Sudoku with HAC and Régin algorithm}
+        \label{python}
             \begin{lstlisting}[frame=single, language=python]
+import networkx as nx
+import time
+from networkx.algorithms.bipartite.matching import hopcroft_karp_matching
+def cross(A, B):
+    "Cross product of elements in A and elements in B."
+    return [(a,b) for a in A for b in B]
+
+def from_file(filename, sep='\n'):
+    "Parse a file into a list of strings, separated by sep."
+    with open(filename,"r") as f:
+        s=f.read()
+    return s.strip().split(sep)
+
+def grid_values(grid):
+    "Convert grid into a dict of {square: char} with '0' or '.' for empties."
+    ints = [c if c in digits else 0 for c in grid ]
+    assert len(ints) == 81
+    return {k:v for k,v in dict(list(zip(squares, ints))).items() if v!=0}
+
 def filtering(GG, u):
     # filter GG with constraint u and return if GG is still satisfiable
     v = set()
@@ -399,151 +612,603 @@ def search_propagate(G, affected):
                     if not filtering(G, i):
                         return False
     return False;
+
+def solve(value):
+    # solve the problem with predefined values in "value"
+    d = {}
+    for i in range(9):
+        for j in range(9):
+            if (i,j) in value.keys():
+                d[(i,j)] = value[(i,j)]
+            else:
+                d[(i,j)] = digits
+    edges=[(k,v)  for k in d.keys() for v in d[k]]
+    G=nx.Graph(edges)
+    tik = time.time()
+    G= search_propagate(G, range(len(unitlist)))
+    tok = time.time()
+    print(tok-tik)
+    #if G:
+    #    print("Solved?", solved(G))
+    #    print("Solution:")
+    #    for i in range(9):
+    #        for j in range(9):
+    #            print(list(G[(i,j)])[0],end=" ")
+    #        print()
+    #else:
+    #    print("Fail")
+
+digits   = '123456789'
+rows     = [i for i in range(9)]
+cols     = [i for i in range(9)]
+# index pair(position) to the variable x with domain of the square
+squares  = cross(rows, cols)
+# initialize a list of units, every square in a unit are all diff
+unitlist = []
+# column units
+unitlist += [[(i,j) for i in range(9)] for j in range(9)]
+# row units
+unitlist += [[(i,j) for j in range(9)] for i in range(9)]
+# box units
+unitlist += [[(i//3*3+j//3,i%3*3+j%3) for j in range(9)] for i in range(9)]
+
+units = {(i,j):set() for i in range(9) for j in range(9)}
+for u in range(len(unitlist)):
+    for e in unitlist[u]:
+        units[e].add(u)
+# read the grids as dictionarys from index pair to assigned digit
+value_dics = [grid_values(grid) for grid in from_file("top95.txt")]
+for value in value_dics:
+    #print("Problem:")
+    #for i in range(9):
+    #    for j in range(9):
+    #        if (i,j) in value.keys():
+    #            print(value[(i,j)],end=" ")
+    #        else:
+    #            print(".", end=" ")
+    #    print()
+    solve(value)
+
             \end{lstlisting}
-            
+            All the codes are available on \url{https://github.com/chaihahaha/sudoku_project}.
 
-            As stated in \cite{simonis2005sudoku}, the constraints interact in multiple ways and tightening with local consistency on each AllDifferent constraint alone cannot exploit all these relations and eliminate all the nogoods, i.e. cannot be backtrack free. So we have to balance between heavy constraint reasoning and propagation and brute force searching in case there is too much time speet on reasoning.
+        \chapter{Solving Sudoku with O2, O8 and OI2 in pure C}
+            \label{c}
+            \begin{lstlisting}[frame=single, language=C]
+#include<stdio.h>
+#include<stdbool.h>
+#include <stdlib.h>
+#include <string.h>
+#include <assert.h>
+#include <sys/time.h>
 
-            In the experiment of previous HAC algorithm which performs Régin Algorithm on each unit separately and propagate, the time cost can be even more than simply using $GAC$ on decomposed binary constraints. Because the search
-            space prunned by constraint reasoning is not overwhelmingly large for some specific cases and the time spent on constraint reasoning is too much.
-        \subsection{Reduction Rules}
+// the dictionary to look for the units where (squares in a unit are diff) a square is placed
+int units[81][3][9];
 
-            Inspired by the reduction rules found in \cite{lardeux2008managing,lardeux2008overlapping}, I implemented the algorithm \ref{eliminate} to perform constraint propagation with O1, O8 and OI2 redunction rules. This algorithm eliminates already assigned values from all the domains of its peers, which is O1 redunction rule. And if a value only appears once in the domains of a unit, assign the sqaure with the value, which is O8 reduction rule. For higher order consistency, when two units overlap
-            and the union of the domains of the intersected variables has no intersection with all the domains of other squares in a unit, eliminate the union from all the domains of the other unit, which is OI2.
+// the dictionary to look for all peers (squares with all diff constraint) of a square
+int peers[81][20];
 
-            \begin{algorithm}
-                \caption{Eliminate with propagation}
-                \label{eliminate}
-                \begin{algorithmic}[1]
-                    \Require Map $\mathcal V:X\times D(X) \to \{T,F\}$, $x_i\in X$, $d_j\in D(x_i)$
-                    \Ensure pruned map $\mathcal V$ if solvable, otherwise $F$.
-                    \Function{Eliminate}{$\mathcal V$, $x_i$, $d_j$}
-                        \State $\mathcal V(x_i, d_j)=F$
-                        \If{$\nexists d', s.t. \mathcal V(x_i, d')=T$}
-                            \State \Return $F$
-                        \EndIf
-                        \If{Exactly one $d', s.t. \mathcal V(x_i, d')=T$}
-                            \For{$x_p\in Peers(x_i)$}
-                                \State $\mathcal V\leftarrow$ \Call{Eliminate}{$\mathcal V, x_p, d'$} \Comment{O1 propagator}
-                                \If{$\mathcal V= F$}
-                                    \State \Return $F$
-                                \EndIf
-                            \EndFor
-                        \EndIf
-                        \For{Unit $U\in Units(x_i), U\subseteq X$}
-                            \If{Exactly one variable $x_u$ in $U\setminus \{x_i\}$ can be assigned with $d_j$} 
-                                \State Assign $x_u$ with value $d_j$ and propagate \Comment{O8 propagator}
-                                \If{Assign failed}
-                                    \State \Return $F$
-                                \EndIf
-                            \EndIf
-                        \EndFor
-                        \For{Box unit $U_1\in Units(x_i)$ and another unit $U_2\neq U_1, U_2\in Units(x_i)$}
-                            \State Get locked candidate set $L\leftarrow D(U_1\cap U_2)\setminus D(U_1\setminus U_2)$
-                            \For{$x_u$ in $U_2\setminus U_1$ and $d_u$ in $L$}
-                                \State $\mathcal V\leftarrow$ \Call{Eliminate}{$\mathcal V, x_u, d_u$} \Comment{Eliminate all the values in locked candidate set from $U_2\setminus U_1$}
-                                \If{$\mathcal V=F$}
-                                    \State \Return $F$
-                                \EndIf
-                            \EndFor
-                        \EndFor
+bool in(int s, int array[], int length);
+void initialize_array();
+int n_left(bool values[9], int* d);
+int n_left_units(bool values[81][9], int u, int d, int s, int* ps);
+bool eliminate(bool values[81][9], int s, int d);
+bool assign(bool values[81][9], int s, int d);
+void grid_values(char* grid, bool values[81][9]);
+char** from_file(char* filename, char sep);
+void parse_grid(char** grids, int n, bool values[81][9]);
+bool search(bool values[81][9]);
+bool solved(bool values[81][9]);
 
-                    \EndFunction
-                \end{algorithmic}
-            \end{algorithm}
+int main()
+{
+    initialize_array();
+    char** grids = from_file("top95.txt",'\n');
 
-\chapter {Tree search}
+    bool values[81][9];
+    struct timeval tv1, tv2;
+    double time_used;
+    
+    int n=0;
+    while(*(grids+n))
+    {
+        parse_grid(grids,n,values);
+        gettimeofday(&tv1, NULL);
+        bool solved = search(values);
+        gettimeofday(&tv2, NULL);
+        time_used = ((double) (tv2.tv_usec-tv1.tv_usec)) / 1000000 + (double) (tv2.tv_sec - tv1.tv_sec);
+        printf("%lf\n",time_used);
+        //printf("Solved? %s\n",solved?"Yes!":"No");
+        //for(int j=0; j<81; j++)
+        //{
+        //    int d;
+        //    n_left(values[j], &d);
+        //    printf("%d ",d+1);
+        //    if(j%9==8)
+        //        printf("\n");
+        //}
+        //printf("\n");
+        n++;
+    }
+    free(grids);
+    return 0;
+}
+char** str_split(char* a_str, const char a_delim)
+{
+    char** result    = 0;
+    size_t count     = 0;
+    char* tmp        = a_str;
+    char* last_comma = 0;
+    char delim[2];
+    delim[0] = a_delim;
+    delim[1] = 0;
 
-    \section {Searching Heuristics}
-        \subsection {Minimum Remaining Values}
-            According to \cite{golomb1965backtrack}, there is a MRV heuristic, which the only heuristic used in my code because it is easy to implement and efficient enough.
-            \begin{algorithm}
-                \caption{SearchMRV}
-                \label{MRV}
-                \begin{algorithmic}[1]
-                    \Require Map $\mathcal V:X\times D(X) \to \{T,F\}$, $\mathcal V(x_i,d_j)=T$ if and only if there is a value $d_j$ in the domain $D(x_i)$ of variable $x_i$, otherwise $\mathcal V(x_i,d_j)=F$. 
-                    \Ensure $\mathcal V'$ if it is a solution, if no solution is found, $F$.
-                    \Function{SearchMRV}{$\mathcal V$}
-                        \If{$solved(\mathcal V)$}
-                            \State \Return $\mathcal V$
-                        \EndIf
-                        \State Get the variable $x_{min}$ with the minimum cardinality of domain $|D(x_{min})|$.
-                        \For{$d$ in $D(x_{min})$}
-                            \State assign $d$ to variable $x_{min}$ and propagate constraints in $\mathcal V$
-                            \If{assigning is successful}
-                                \State $\mathcal V'\leftarrow$ \Call{SearchMRV}{$\mathcal V$}
-                                \If{$\mathcal V'\neq F$}
-                                    \State \Return $\mathcal V'$
-                                \EndIf
-                            \EndIf
-                        \EndFor
-                        \State \Return $F$
-                    \EndFunction
-                \end{algorithmic}
-            \end{algorithm}
+    /* Count how many elements will be extracted. */
+    while (*tmp)
+    {
+        if (a_delim == *tmp)
+        {
+            count++;
+            last_comma = tmp;
+        }
+        tmp++;
+    }
 
-        \subsection{Forward Checking}
-            Forward checking keeps arc consistency for a constraint $c(V)$ if only one variable $x_i\in V$ is not instantiated during the process of tree search\cite{golomb1965backtrack}. So forward checking for the binary decomposed AllDifferent constraint of Sudoku problem is equivalent to the process of eliminating the digit from rows, columns and boxes whenever a square is assigned a digit, which gives the algorithm \ref{FC}
-            \begin{algorithm}
-                \caption{Forward Checking}
-                \label{FC}
-                \begin{algorithmic}[1]
-                    \Require Map $\mathcal V:X\times D(X) \to \{T,F\}$, $x_i\in X$, $d_j\in D(x_i)$
-                    \Ensure pruned map $\mathcal V$ if solvable, otherwise $F$.
-                    \Function{ForwardChecking}{$\mathcal V$, $x_i$, $d_j$}
-                        \For{$\forall c_{ik}=\{ x_i\neq x_k\}= C(x_i,x_k)=C$ }
-                            \State $\mathcal V(x_k,d_j)=F$ \Comment{Eliminate $d_j$ from all the variables $x_k$ with constraint $c_{ik}$}
-                        \EndFor
-                        \If{$\mathcal V$ if $\forall x_i\in X,\exists d_j\in D(x_i), \mathcal V(x_i,d_j)=T$}
-                            \State \Return $\mathcal V$
-                        \Else
-                            \State \Return $F$
-                        \EndIf
-                    \EndFunction
-                \end{algorithmic}
-            \end{algorithm}
+    /* Add space for trailing token. */
+    count += last_comma < (a_str + strlen(a_str) - 1);
 
-        \subsection{Conflict-Directed Backjumping}
-            \begin{definition} (nogood) A nogood is a set of assignments and branching constraints that is not consistent with any solution\cite{rossi2006handbook}.
-            \end{definition}
+    /* Add space for terminating null string so caller
+       knows where the list of returned strings ends. */
+    count++;
 
-            Conflict Directed Backjumping(CBJ) is a technique that utilizes the predefined nogood which can help ruling out branches of search tree to perform several back tracking steps all at once\cite{prosser1993hybrid}.
+    result = malloc(sizeof(char*) * count);
+
+    if (result)
+    {
+        size_t idx  = 0;
+        char* token = strtok(a_str, delim);
+
+        while (token)
+        {
+            assert(idx < count);
+            *(result + idx++) = strdup(token);
+            token = strtok(0, delim);
+        }
+        assert(idx == count - 1);
+        *(result + idx) = 0;
+    }
+
+    return result;
+}
+
+bool in(int s, int array[], int length)
+{
+    // if "s" is in "array" of "length", return true, else return false
+    for(int i=0;i<length;i++)
+    {
+        if(s==array[i])
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+void initialize_array()
+{
+    // all the squares of the units with all different constraint on the board
+    int unitlist[27][9]; // 27x9
+    // initialize all the global variables
+    for(int i=0;i<9;i++)
+    {
+        for(int j=0;j<9;j++)
+        {
+            unitlist[i][j]=j*9+i;
+        }
+    }
+    for(int i=9;i<18;i++)
+    {
+        for(int j=0;j<9;j++)
+        {
+            unitlist[i][j]=(i-9)*9+j;
+        }
+    }
+    for(int i=18;i<27;i++)
+    {
+        for(int j=0;j<9;j++)
+        {
+            unitlist[i][j]=((i-18)/3*3+j/3)*9+(i-18)%3*3+j%3;
+        }
+    }
+
+    //printf("unit list initialized\n");
+    //for(int i=0;i<27;i++)
+    //{
+    //    for(int j=0;j<9;j++)
+    //    {
+    //        printf("%d ",unitlist[i][j]);
+    //    }
+    //    printf("\n");
+    //}
+    //printf("\n");
+    
+    for(int i=0; i<81; i++)
+    {
+        int count=0;
+        for(int j=0; j<27; j++)
+        {
+            if(in(i, unitlist[j],9))
+            {
+                for(int k=0; k<9; k++)
+                {
+                    units[i][count][k]=unitlist[j][k];
+                }
+                count++;
+            }
+            if(count>2)
+            {
+                break;
+            }
+        }
+    }
+    //printf("units initialized\n");
+    //for(int i=0; i<81; i++)
+    //{
+    //    print_pair(squares[i]);
+    //    printf(": \n[");
+    //    for(int j=0; j<3; j++)
+    //    {
+    //        for(int k=0; k<9; k++)
+    //        {
+    //            printf("%d ",units[i][j][k]);
+    //        }
+    //        printf("\n");
+    //    }
+    //    printf("]\n");
+    //}
+
+    for(int i=0; i<81; i++)
+    {
+        bool hasht[81]={0};
+        for(int j=0; j<3; j++)
+        {
+            for(int k=0; k<9; k++)
+            {
+                if(i!=units[i][j][k])
+                {
+                    hasht[units[i][j][k]]=true;
+                }
+            }
+        }
+        int count = 0;
+        for(int j=0; j<81; j++)
+        {
+            if(hasht[j])
+            {
+                peers[i][count]=j;
+                count++;
+            }
+            if(count>20)
+            {
+                break;
+            }
+        }
+    }
+
+    //printf("peers initialized\n");
+    //for(int i=0; i<81; i++)
+    //{
+    //    print_pair(squares[i]);
+    //    printf(": \n[");
+    //    for(int k=0; k<20; k++)
+    //    {
+    //        printf("%d ",peers[i][k]);
+    //    }
+    //    printf("\n");
+    //    printf("]\n");
+    //}
+    
+}
+int n_left(bool values[9], int* d)
+{
+    // count the nbr of possible values left in domain "values", if only one left, indicate it by digit "d"
+    int count=0;
+    for(int i=0; i<9; i++)
+    {
+        if(values[i])
+        {
+            *d = i;
+            count++;
+        }
+    }
+    return count;
+}
+int n_left_units(bool values[81][9], int u, int d, int s, int* ps)
+{
+    // count nbr of squares of a unit "u" of "s" where "d" can be placed, if only one left, indicate the square by "ps"
+    int count = 0;
+    for(int i=0; i<9; i++)
+    {
+        // if "d" can be place in one square "i" of the "u"th unit of "s", i.e. can be placed in "s1"
+        int s1 = units[s][u][i];
+        if(values[s1][d])
+        {
+            // record the square
+            *ps = s1;
+            count++;
+        }
+    }
+    return count;
+}
+bool eliminate(bool values[81][9], int s, int d)
+{
+    // eliminate "d" from the domain of "s", if domain is empty, contradict and return false, else return true
+    if(!values[s][d])
+        return true;
+    values[s][d] = false;
+    int d2;
+    int n = n_left(values[s],&d2);
+    if(n==0)
+    {
+        return false;
+    }
+
+    // O1 propagator
+    if(n==1)
+    {
+        for(int s2=0; s2<20; s2++)
+        {
+            if(!eliminate(values, peers[s][s2], d2))
+            {
+                return false;
+            }
+        }
+    }
+
+    // O8 propagator
+    for(int u=0; u<3; u++)
+    {
+        int ps;
+        int n=n_left_units(values, u, d, s, &ps);
+        if(n==0)
+        {
+            return false;
+        }
+        if(n==1)
+        {
+            // if the eliminated value "d" can be assigned to a square where "s" is located, then assign
+            if(!assign(values, ps, d))
+            {
+                return false;
+            }
+        }
+        
+    }
+
+     OI2 propagator
+    int tmp;
+    for(int u2=0; u2<2; u2++)
+    {
+        for(int u1=u2+1; u1<3; u1++)
+        {
+            // if the intersection has a subset of digits which is locked candicates for unit "u"
+            bool locked[9],intersection[81],unit2[81];
+            for(int i=0; i<81; i++)
+            {
+                intersection[i]=false;
+                unit2[i]=false;
+            }
+            for(int i=0; i<9; i++)
+            {
+                intersection[units[s][u1][i]]=true;
+                unit2[units[s][u2][i]]=true;
+                locked[i]=false;
+            }
 
 
-            For Sudoku problem, if $x_1,\cdots, x_9\in X$ are in the same unit, $|D(x_1)|>1$ and $D(x_1)\cap D(x_i)=\emptyset, x\in\{2,\cdots,9\}$, then the problem is not solvable. I use this nogood in my code to perform CBJ, which is algorithm \ref{backjumping}.
+            for(int i=0; i<81; i++)
+            {
+                // for square i in intersection
+                intersection[i] &= unit2[i];
+                if(intersection[i])
+                {
+                    for(int d=0; d<9; d++)
+                    {
+                        // if i have d, d can be locked
+                        if(values[i][d])
+                        {
+                            locked[d] = true;
+                        }
+                    }
+                }
+            }
+            for(int i=0; i<9; i++)
+            {
+                // set subtraction
+                for(int d=0; d<9; d++)
+                {
+                    // if one square in unit "u" other than "intersection" has a digit "d"
+                    if(values[units[s][u2][i]][d] && (!intersection[units[s][u2][i]]))
+                    {
+                        locked[d]=false;
+                    }
+                }
+            }
+            // if "u1" or "u2" is a box
+            if(units[s][u2][3]-units[s][u2][0]==9 || units[s][u1][3]-units[s][u1][0]==9)
+            {
+                // for the other unit "u1", remove locked from not intersected squares
+                for(int j=0; j<9; j++)
+                {
+                    // eliminate locked from unit "u1" other than intersection
+                    for(int d1=0; d1<9; d1++)
+                    {
+                        int square_u1j = units[s][u1][j];
+                        if(values[square_u1j][d1] && locked[d1] && (!intersection[square_u1j]))
+                        {
+                            if(!eliminate(values, units[s][u1][j],d1))
+                            {
+                                return false;
+                            }
+                        }
+                    }
+                }
+            }
+            else
+            {
+                // back jumping
+                if(n_left(locked, &tmp)>1)
+                {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
 
-             \begin{algorithm}
-                \caption{Conflict Directed Backjumping}
-                \label{backjumping}
-                \begin{algorithmic}[1]
-                    \Require Map $\mathcal V:X\times D(X) \to \{T,F\}$
-                    \Ensure $\mathcal V'$ if it is a solution, if no solution is found, $F$.
-                    \Function{SearchCDB}{$\mathcal V$}
-                        \If{$solved(\mathcal V)$}
-                            \State \Return $\mathcal V$
-                        \EndIf
-                        \State Get the variable $x_{min}$ with the minimum cardinality of domain $|D(x_{min})|$.
-                        \For{$d$ in $D(x_{min})$}
-                            \For{A set of variables $Y$ having AllDifferent constraint with $x_{min}$(For Sudoku problem, if $U$ is a unit, then $Y=U\setminus \{x_{min}\}$)}
-                                \If{$D(x_{min})\cap D(Y)=\emptyset$}
-                                    \State \Return F  \Comment{Use nogood to backjump}
-                                \EndIf
-                            \EndFor
-                            \State assign $d$ to variable $x_{min}$ and propagate constraints in $\mathcal V$
-                            \If{assigning is successful}
-                                \State $\mathcal V'\leftarrow$ \Call{SearchCDB}{$\mathcal V$}
-                                \If{$\mathcal V'\neq F$}
-                                    \State \Return $\mathcal V'$
-                                \EndIf
-                            \EndIf
-                        \EndFor
-                        \State \Return $F$
-                    \EndFunction
-                \end{algorithmic}
-            \end{algorithm}
-    \section {Comparisons}
-        Although AllDifferent constraint HAC algorithm will eliminate more search space, it is so slow that constraint reasoning might take more time than searching and backtracking. For all the other methods, I implemented them in one pure C program. I noticed that by adding OI2 reduction rule (which is only path consistency propagator), the performance of the algorithm even degenerate. I analyzed the algorithm and discovered that almost all higher order consistencies are
-        time consuming to perform, which may instead worsen the time complexity.
+}
+bool assign(bool values[81][9], int s, int d)
+{
+    // assign "d" to the domain of "s" and eliminate all the other values, if contradict return false, else return true
+    for(int d2=0; d2<9; d2++)
+    {
+        if(d2!=d && values[s][d2])
+        {
+            if(!eliminate(values, s, d2))
+            {
+                return false;
+            }
+        }
+    }
+    return true;
+
+}
+void grid_values(char* grid, bool values[81][9])
+{
+    // assign values to the domain of squares according to a grid string
+    for(int j=0; j<81; j++)
+    {
+            for(int k=0; k<9; k++)
+            {
+                values[j][k] = true;
+            }
+    }
+    int idx=0, count=0;
+    while(grid[idx]!='\0' && count<81)
+    {
+        if(grid[idx]>=49 && grid[idx]<=57)
+        {
+            if(!assign(values, count, grid[idx]-49))
+            {
+                printf("assigning failed!\n");
+            }
+            count++;
+        }
+        if(grid[idx]=='0' || grid[idx]=='.')
+        {
+            count++;
+        }
+        idx++;
+    }
+}
+char** from_file(char* filename, char sep)
+{
+    // read from a files many grids, split it and return the array of strings
+    FILE* f;
+    f = fopen(filename, "r");
+    fseek(f, 0, SEEK_END);
+    long length = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    char* buffer = malloc(length);
+    if(buffer)
+    {
+        fread(buffer, 1, length, f);
+    }
+    fclose(f);
+    char** grids;
+    if(buffer)
+    {
+        grids = str_split(buffer, sep);
+    }
+
+    return grids;
+}
+void parse_grid(char** grids, int n, bool values[81][9])
+{
+    // parse the grids string and assign values grid by grid
+    char* grid = *(grids+n);
+    grid_values(grid, values);
+    free(*(grids+n));
+}
+bool solved(bool values[81][9])
+{
+    // decide whether a grid is solved by scanning the values of domains of its squares
+    int n, d2;
+    for(int s=0; s<81; s++)
+    {
+        n = n_left(values[s], &d2);
+        if(n>1)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+bool search(bool values[81][9])
+{
+    // depth first search trying to assign possible values to squares with help of constraint propagation
+    if(solved(values))
+        return true;
+    int min=10, s=0;
+    for(int i=0; i<81; i++)
+    {
+        int d2;
+        int n=n_left(values[i], &d2);
+        if(n<min && n>=2)
+        {
+            min=n;
+            s=i;
+        }
+    }
+    for(int d=0; d<9; d++)
+    {
+        if(values[s][d])
+        {
+            // back up values by deep copying
+            bool values_cp[81][9];
+            for(int i=0; i<81; i++)
+            {
+                for(int j=0; j<9; j++)
+                {
+                    values_cp[i][j]= values[i][j];
+                }
+            }
+            if(assign(values_cp, s, d))
+            {
+                // assigning is successful
+                bool solved = search(values_cp);
+                if(solved)
+                {
+                    // if solved copy back
+                    for(int i=0; i<81; i++)
+                    {
+                        for(int j=0; j<9; j++)
+                        {
+                            values[i][j]= values_cp[i][j];
+                        }
+                    }
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
+            \end{lstlisting}
+            All the codes are available on \url{https://github.com/chaihahaha/sudoku_project}.
+
+    \end{appendices}
 
 \bibliography{../report_bib}{}
 \bibliographystyle{plain}

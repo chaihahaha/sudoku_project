@@ -1,4 +1,5 @@
 from ortools.sat.python import cp_model
+import time
 
 def cross(A, B):
     "Cross product of elements in A and elements in B."
@@ -50,16 +51,19 @@ def solve(values):
     # initialize a solver
     solver=cp_model.CpSolver()
 
+    tik = time.time()
     # solve the CSP
     status = solver.Solve(model)
+    tok = time.time()
+    print(tok-tik)
 
     # get the solution
     solution = [[solver.Value(x[i][j]) for j in range(9)] for i in range(9)]
 
     # print the solution
-    print('\n'.join([''.join(['{:2}'.format(item) for item in row])
-          for row in solution]))
-    print('\n')
+    #print('\n'.join([''.join(['{:2}'.format(item) for item in row])
+    #      for row in solution]))
+    #print('\n')
 
 
 digits   = '123456789'
