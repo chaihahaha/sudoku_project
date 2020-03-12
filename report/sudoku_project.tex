@@ -224,8 +224,8 @@
                         \EndIf
                         \State $G\gets G_g[U\cup D(U)]$ \Comment{Get the induced subgraph to perform HAC locally}
                         \State $M\gets$ \Call{HopcroftCarpMatching}{$G, U$}
-                        \State $A_{dx}\gets \{(d_i,x_i|\ \{d_i,x_i\}\in E(G)\setminus M \}$\Comment{Arcs from value to variable}
-                        \State $A_{xd}\gets \{(x_i,d_i|\ \{x_i,d_i\}\in M\}$ \Comment{Arcs from variable to value}
+                        \State $A_{dx}\gets \{(d_i,x_i)|\ \{d_i,x_i\}\in E(G)\setminus M \}$\Comment{Arcs from value to variable}
+                        \State $A_{xd}\gets \{(x_i,d_i)|\ \{x_i,d_i\}\in M\}$ \Comment{Arcs from variable to value}
                         \State $G_M\gets$ \Call{DiGraph}{$A_{dx}\cup A_{xd}$}
                         \State $S\gets M$
                         \For{$i$ in \Call{StronglyConnedtedComponents}{$G_M$}}

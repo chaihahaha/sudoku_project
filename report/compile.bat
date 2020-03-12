@@ -1,3 +1,4 @@
+python plot.py
 if exist build ( echo exist ) else ( mkdir build )
 cd build
 xelatex ../sudoku_project
