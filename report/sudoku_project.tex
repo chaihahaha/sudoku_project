@@ -253,7 +253,7 @@
             space prunned by constraint reasoning is not overwhelmingly large for some specific cases and the time spent on constraint reasoning is too much.
         \subsection{Reduction Rules}
 
-            Inspired by the reduction rules \ref{Om} and \ref{OIm} found in \cite{lardeux2008managing,lardeux2008overlapping}, I implemented the algorithm \ref{eliminate} to perform constraint propagation with O1, O8 and OI2 redunction rules. This algorithm eliminates already assigned values from all the domains of its peers, which is O1 redunction rule. And if a value only appears once in the domains of a unit, assign the sqaure with the value, which is O8 reduction rule. For higher order consistency, when two units overlap
+            Inspired by the reduction rules \ref{Om} and \ref{OIm} found in \cite{lardeux2008managing,lardeux2008overlapping}, I implemented the algorithm \ref{eliminate} to perform constraint propagation with O1, O8 and OI2 redunction rules. This algorithm eliminates already assigned values from all the domains of its peers, which is O1 redunction rule. And if a value only appears once in the domains of a unit, assign the square with the value, which is O8 reduction rule. For higher order consistency, when two units overlap
             and the union of the domains of the intersected variables has no intersection with all the domains of other squares in a unit, eliminate the union from all the domains of the other unit, which is OI2.
 
             \begin{algorithm}
