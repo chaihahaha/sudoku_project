@@ -1,0 +1,346 @@
+\documentclass[10pt,aspectratio=43,mathserif]{beamer} 
+\usepackage{float}
+\usepackage{graphicx}
+\usepackage{mathrsfs} % for mathscr
+\usepackage{animate}
+\usepackage{amsmath,bm,amsfonts,amssymb,enumerate,epsfig,bbm,calc,color,ifthen,capt-of,multimedia,hyperref}
+\usepackage{tikz}
+\usepackage{hyperref}
+\usetheme{Berlin} 
+\usepackage[subsection]{algorithm} % depended by algpseudocode
+\usepackage{algpseudocode}
+
+\graphicspath{{../img/}}
+\usepackage{xcolor}
+\usepackage{listings}
+
+
+\definecolor{mygreen}{rgb}{0,0.6,0}
+\definecolor{mygray}{rgb}{0.5,0.5,0.5}
+\definecolor{mymauve}{rgb}{0.58,0,0.82}
+\newcommand{\Console}{Console}
+\lstset{ %
+	backgroundcolor=\color{white},   % choose the background color
+	basicstyle=\footnotesize\rmfamily,     % size of fonts used for the code
+	columns=fullflexible,
+	breaklines=true,                 % automatic line breaking only at whitespace
+	captionpos=b,                    % sets the caption-position to bottom
+	tabsize=4,
+	commentstyle=\color{mygreen},    % comment style
+	escapeinside={\%*}{*)},          % if you want to add LaTeX within your code
+	keywordstyle=\color{blue},       % keyword style
+	stringstyle=\color{mymauve}\ttfamily,     % string literal style
+	numbers=left, 
+%	frame=single,
+	rulesepcolor=\color{red!20!green!20!blue!20},
+	% identifierstyle=\color{red},
+	language=c
+}
+\title{A Tree Search/Constraint Propagation algorithm for the Sudoku Problem}
+\date{}
+\author{Shitong CHAI}
+
+\institute{ISIMA}
+
+\begin{document}
+\frame{\titlepage}
+
+\section{Definitions}
+    \begin{frame}{Sudoku}
+    Square: A sqaure is a variable $x_{ij}\in\{1,\cdots,9\}$ where values 1 to 9 can be placed.
+
+    Grid: A grid is given by $9\times 9$ squares $\{x_{ij}|\ i,j\in\{1,\cdots,9\}\}$.
+
+    Unit: A unit is a row, a column or a box.
+
+    Peers of $x_{ij}$: All the squares that are in the same unit of $x_{ij}$
+
+    AllDifferent: Squares in the same unit should be all different, i.e. $AllDifferent(Unit)$
+\end{frame}
+
+\begin{frame}{CSP}
+    Constraint Satisfaction Problem is a triple $\mathcal P=\langle X, D, C\rangle$. 
+
+    Where $X$ is the tuple of all the variables $X=\langle x_1,x_2,\cdots,x_n\rangle$, every variable takes value from a domain $x_i\in D(x_i)=D_i$;
+
+    $D$ is the tuple of all the domains $D=D(x_1)\times D(x_2)\times \cdots D(x_n)=\langle D_1,D_2,\cdots,D_n\rangle$; 
+
+    $C$ is the set of all the constraints $C=\{c_1,c_2,\cdots,c_t\}$ where a constraint $c_j$ is a pair $\langle c(X(c_j)),
+            X(c_j)\rangle$, $X(c_j)$ is the scheme of constraint $c_j$ consisted of all the variables restricted by constraint $c_j$ and $c(V)$ represents the relation of variables in $V$.
+\end{frame}
+
+\begin{frame}{Instantiation}
+            \begin{definition}
+                (Instantiation) Given a network $N=\langle X,D,C\rangle$,
+
+                An instantiation $I$ on $Y=\langle x_1,\cdots,x_k\rangle \subseteq X$ is an assignment of values $d_1,\cdots, d_k$ to the variables $x_1, \cdots, x_k$ i.e. $I$ is a tuple on $Y$. $I$ can be denoted by $\{x_1\gets d_1, \cdots, x_k\gets d_k\}=\langle d_1, \cdots, d_k\rangle$.
+
+                An instantiation $I$ on $Y$ is valid if $\forall x_i\in Y, I[x_i]\in D(x_i)$.
+
+                An instantiation $I$ on $Y$ is locally consistent iff it is valid for all $c\in C$ with $X(c)\subseteq Y$, $I[X(c)]$ satisfies $c$. If $I$ is not locally consistent, it is locally inconsistent.
+
+                A solution $sol(N)$ to a network $N$ is an instantiation $I$ on $X$ which is locally consistent. 
+
+                An instantiation $I$ on $Y$ is globally consistent if it can be extended to a solution backtrack-freely.
+            \end{definition}
+\end{frame}
+
+\begin{frame}{$\preceq$}
+            \begin{definition}
+                (Preorder $\preceq$ on networks\cite{rossi2006handbook}) Given networks $N$ and $N'$, $N'\preceq N$ iff $X_{N'}=X_N$ and any instantiation $I$ on $Y\subseteq X_N$ locally inconsistent in $N$ is locally inconsistent in $N'$ as well.
+            \end{definition}
+\end{frame}
+
+\begin{frame}{Tightenings of a network}
+            \begin{definition}
+                (Tightenings of a network\cite{rossi2006handbook}) The space of $\mathcal P_N$ of all possible tightenings of a network $N=\langle X,D,C\rangle$ is the set of networks $N'=\langle X,D',C'\rangle$ such that $D'\subseteq D$ and for all $c\in C$ there exists $c'\in C'$ with $X(c')=X(c)$ and $c'\subset c$.
+            \end{definition}
+\end{frame}
+
+\begin{frame}{Global consistency}
+            \begin{definition}
+                (Global consistency\cite{rossi2006handbook}) Let $N=\langle X,D,C\rangle$ be a network, and $N_G=\langle X,D_G,C_G\rangle$ be a network in $\mathcal P^{sol}_N$. If for all $N'\in \mathcal P^{sol}_N$, $N_G\preceq N'$, then any instantiation $I$ on $Y\subseteq X$ which is locally consistent in $N_G$ can be extended to a solution of $N$. $N_G$ is called a globally consistent network.
+            \end{definition}
+\end{frame}
+
+\begin{frame}
+            \begin{definition}
+                (Hyper Arc Consistency) Given a network $N=\langle X,D,C\rangle$, a constraint $c\in C$ and a variable $x_i\in X(c)$,
+
+                A value $d_i\in D(x_i)$ is consistent with $c$ in $D$ iff there exists a valid tuple $d$ satisfing $c$ such that $d_i=d[x_i]$. Such a tuple is called a support for assigning $x_i\gets d_i$ on $c$.
+
+                The domain $D$ is hyper arc consistent on $c$ for $x_i$ iff all values in $D(x_i)$ are consistent with $c$ in $D$, i.e. $D(x_i)\subseteq \pi_{x_i} (c\cap \pi_{X(c)} (D))$.
+
+                The network $N$ is hyper arc consistent iff $D$ is hyper arc consistent for all variables in $X$ on all constraints in $C$.
+
+                The network $N$ is arc inconsistent iff $\emptyset$ is the only domain tighter than $D$ which is hyper arc consistent for all variables on all constraints.
+            \end{definition}
+\end{frame}
+
+\begin{frame}{Sudoku as a CSP}
+     Sudoku is a CSP $\mathcal P=\langle X, D, C\rangle$ where $X=\langle x_{11}, x_{12}, \cdots, x_{21}, \cdots, x_{99}\rangle$ is consisted of 81 variables corresponding to 81 squares, $D=(\{1..9\}\cap A(x_{11}))\times\cdots\times(\{1..9\}\cap A(x_{99}))$, where $A(x_{ij})$ is the set of preassigned values for variable $x_{ij}$,  $C=\{c(Y)|\ Y \text{ is the set of variables in a unit}\}$ and $c(Y)$ is AllDifferent constraint on the set of variables $Y$ which means $\forall x_i,x_j\in Y,
+            x_i\neq x_j$
+\end{frame}
+
+\begin{frame}{Sudoku as a SAT}
+    For a CSP $\langle X,D,C\rangle$, define the variables $\forall x\in X, \forall d\in D(x), \exists\mathcal V_{x,d}\in \{T,F\}$ for the corresponding SAT\ref{lardeux2008managing,lardeux2008overlapping}. Exactly one value is taken for each variable $x$, so we have $\land_{x\in X}\vee_{d\in D(x)} \mathcal V_{x,d}$ and $\land_{x\in X}\land_{d_1,d_2\in
+            D(x),d_1\neq d_2}(\neg \mathcal V_{x,d_1} \vee \neg \mathcal V_{x,d_2})$.
+
+            For a AllDifferent constraint on $n$ variables $x_i, i\in \{1..n\}$, we can decompose it into $\frac{n(n-1)}{2}$ pairwise disequality constraints $\land_{x_i,x_j\in V, i\neq j} x_i\neq x_j$.
+\begin{align}
+                & \quad \frac{<C \wedge Alldiff(V), D>| V^{\prime} \subset V \wedge D_{V^{\prime}}=\left\{d_{1}, \ldots, d_{m}\right\}}{<C \wedge Alldiff(V), D^{\prime}>| d_{1}, \ldots, d_{m} \notin D_{V \setminus V^{\prime}}}
+                \label{Om}
+                \tag{Om}
+            \end{align}
+
+            \begin{align}
+                & \quad \frac{<C \wedge_{i=1}^{m} Alldiff(V_{i}), D>| d \in D_{V} \wedge d \notin D_{V_{1} \setminus V}}{<C \wedge_{i=1}^{m} Alldiff(V_{i}), D^{\prime}>| d \notin \bigcup_{i=1}^{m} D_{V_{i} \backslash V}}
+                \label{OIm}
+                \tag{OIm}
+            \end{align}
+\end{frame}
+
+\section{AllDifferent}
+
+    \begin{frame}{Binary Decomposition of AllDifferent}
+        \begin{definition}
+                        (Binary decomposition\cite{van2001alldifferent}) Let C be a constraint on the variables $x_1,\cdots,x_n$. A binary decomposition of C is a minimal set of binary constraints $C_{dec}=\{C_1,\cdots,C_k\}$ on pairs of variables from $x_1, \cdots, x_n$ such that the solution set of $C$ equals the solution set of $\bigcap_{i=1}^k C_i$.
+        \end{definition}
+        By definition, the binary decomposition of AllDifferent constraint is $$\bigcap_{1<i<j<n} \{x_i\neq x_j\} $$
+    
+        \begin{theorem}
+           Let P be CSP and $P_{dec}$ the same CSP in which all the AllDiffernt constraints are binary decomposed. Then $\Phi_{HA}(P)\preceq \Phi_{dec}(P)$.
+        \end{theorem}
+    \end{frame}
+
+\section{Propagators}
+    \begin{frame}{Value graph}
+        \begin{definition}
+                (Value graph) Let $X$ be a set of variables and $D(X)$ the union of their domains. The bipartite graph $G=\langle X,D(X),E\rangle$ with $E=\{\{x,d\}|\ x\in X, d\in D(x)\}$ is called the value graph of $X$.
+            \end{definition}
+    \end{frame}
+
+    \begin{frame}{Régin theorem}
+        \begin{theorem}
+                (Régin\cite{regin1994filtering}) Let $X=\{x_1,\cdots,x_n\}$ be a set of variables and let $G$ be the value graph of $X$. Then $\langle d_1,\cdots,d_n\rangle\in AllDifferent(x_1,\cdots,x_n)$ if and only if $M=\{\{x_1,d_1\},\cdots,\{x_n,d_n\}\}$ is a matching in $G$.
+            \end{theorem}
+            \begin{theorem}
+                Let $G$ be a graph and $M$ a maximum-cardinality matching in $G$. An edge $e$ belongs to some maximum-cardinality matching in $G$ iff $e\in M$ or $e$ in on an even-length $M$-alternating path starting at an $M$-free vertex, or $e$ is on an even-length $M$-alternating circuit.
+            \end{theorem}
+    \end{frame}
+
+    \begin{frame}[allowframebreaks]{HAC propagation with Régin Algorithm}
+                \begin{algorithmic}[1]
+                    \Require Value graph of the CSP $G_g$, variable set of a unit $U\subseteq X$
+                    \Ensure Pruned value graph $G_g$ if it's solvable, otherwise $F$
+                    \Function{Filtering}{$G_g$, $U$}
+                        \If{not $solvable(G_g)$}
+                            \State \Return $F$
+                        \EndIf
+                        \State $G\gets G_g[U\cup D(U)]$ \Comment{Ensure HAC in induced subgraph}
+                        \State $M\gets$ \Call{HopcroftCarpMatching}{$G, U$}
+                        \State $A_{dx}\gets \{(d_i,x_i)|\ \{d_i,x_i\}\in E(G)\setminus M \}$\Comment{Arcs from value to variable}
+                        \State $A_{xd}\gets \{(x_i,d_i)|\ \{x_i,d_i\}\in M\}$ \Comment{Arcs from variable to value}
+                        \State $G_M\gets$ \Call{DiGraph}{$A_{dx}\cup A_{xd}$}
+                        \State $S\gets M$
+                        \For{$i$ in \Call{StronglyConnedtedComponents}{$G_M$}}
+                            \State $S \gets S\cup A(G_M[i])$
+                        \EndFor
+                        \State $V_{free} \gets V(G)\setminus V(M)$
+                        \If{$V_{free}\neq \emptyset$}
+                            \For{$i$ in \Call{BFSNext}{$G_M,V_{free}$}} \Comment{$i$ is the set of next arcs}
+                                \For{$j$ in $i$}
+                                    \State $S\gets S\cup j$
+                                \EndFor
+                            \EndFor
+                        \EndIf
+                        \State $G_g\gets G_g \setminus(E(G)\setminus S)$
+                    \EndFunction
+                \end{algorithmic}
+    \end{frame}
+
+\section{Algorithms}
+    \begin{frame}[allowframebreaks]{My algorithm with O2, O8 and OI2}
+        \begin{algorithmic}[1]
+                    \Require Map $\mathcal V:X\times D(X) \to \{T,F\}$, $x_i\in X$, $d_j\in D(x_i)$
+                    \Ensure pruned map $\mathcal V$ if solvable, otherwise $F$.
+                    \Function{Eliminate}{$\mathcal V$, $x_i$, $d_j$}
+                        \State $\mathcal V(x_i, d_j)=F$
+                        \If{$\nexists d', s.t. \mathcal V(x_i, d')=T$}
+                            \State \Return $F$
+                        \EndIf
+                        \If{Exactly one $d', s.t. \mathcal V(x_i, d')=T$}
+                            \For{$x_p\in Peers(x_i)$}
+                                \State $\mathcal V\gets$ \Call{Eliminate}{$\mathcal V, x_p, d'$} \Comment{O1 propagator}
+                                \If{$\mathcal V= F$}
+                                    \State \Return $F$
+                                \EndIf
+                            \EndFor
+                        \EndIf
+                        \For{Unit $U\in Units(x_i), U\subseteq X$}
+                            \If{Exactly one variable $x_u$ in $U\setminus \{x_i\}$ can be assigned with $d_j$} 
+                                \State Assign $x_u$ with value $d_j$ and propagate \Comment{O8 propagator}
+                                \If{Assign failed}
+                                    \State \Return $F$
+                                \EndIf
+                            \EndIf
+                        \EndFor
+                        \For{Box unit $U_1\in Units(x_i)$ and another unit $U_2\neq U_1, U_2\in Units(x_i)$}
+                            \State Get locked candidate set $L\gets D(U_1\cap U_2)\setminus D(U_1\setminus U_2)$
+                            \For{$x_u$ in $U_2\setminus U_1$ and $d_u$ in $L$}
+                                \State $\mathcal V\gets$ \Call{Eliminate}{$\mathcal V, x_u, d_u$} \Comment{Eliminate all the values in locked candidate set from $U_2\setminus U_1$(OI2)}
+                                \If{$\mathcal V=F$}
+                                    \State \Return $F$
+                                \EndIf
+                            \EndFor
+                        \EndFor
+
+                    \EndFunction
+                \end{algorithmic}
+        \end{frame}
+
+    \begin{frame}[allowframebreaks]{Minimum Remaining Values}
+        \begin{algorithmic}[1]
+                    \Require Map $\mathcal V:X\times D(X) \to \{T,F\}$, $\mathcal V(x_i,d_j)=T$ if and only if there is a value $d_j$ in the domain $D(x_i)$ of variable $x_i$, otherwise $\mathcal V(x_i,d_j)=F$. 
+                    \Ensure $\mathcal V'$ if it is a solution, if no solution is found, $F$.
+                    \Function{SearchMRV}{$\mathcal V$}
+                        \If{solved$(\mathcal V)$}
+                            \State \Return $\mathcal V$
+                        \EndIf
+                        \State Get the variable $x_{min}$ with the minimum cardinality of domain $|D(x_{min})|$.
+                        \For{$d$ in $D(x_{min})$}
+                            \State $\mathcal V' \gets \mathcal V$ \Comment{Back up in case of backtracking}
+                            \State assign $d$ to variable $x_{min}$ and propagate constraints in $\mathcal V'$
+                            \If{assigning is successful}
+                                \State $\mathcal V'\gets$ \Call{SearchMRV}{$\mathcal V'$}
+                                \If{$\mathcal V'\neq F$}
+                                    \State \Return $\mathcal V'$
+                                \EndIf
+                            \EndIf
+                        \EndFor
+                        \State \Return $F$
+                    \EndFunction
+                \end{algorithmic}
+        \end{frame}
+
+        \begin{frame}{Forward Checking}
+            \begin{algorithmic}[1]
+                    \Require Map $\mathcal V:X\times D(X) \to \{T,F\}$, $x_i\in X$, $d_j\in D(x_i)$
+                    \Ensure pruned map $\mathcal V$ if solvable, otherwise $F$.
+                    \Function{ForwardChecking}{$\mathcal V$, $x_i$, $d_j$}
+                        \For{$\forall c_{ik}=\{ x_i\neq x_k\}= C(x_i,x_k)=C$ }
+                            \State $\mathcal V(x_k,d_j)=F$ \Comment{Eliminate $d_j$ from all the variables $x_k$ with constraint $c_{ik}$}
+                        \EndFor
+                        \If{$\forall x_i\in X, \exists d_j, \mathcal V(x_i,d_j)=T$}\Comment{If no contradiction in $\mathcal V$}
+                            \State \Return $\mathcal V$
+                        \Else
+                            \State \Return $F$
+                        \EndIf
+                    \EndFunction
+                \end{algorithmic}
+        \end{frame}
+
+        \begin{frame}[allowframebreaks]{Conflict Directed Backjumping}
+            \begin{algorithmic}[1]
+                    \Require Map $\mathcal V:X\times D(X) \to \{T,F\}$
+                    \Ensure $\mathcal V'$ if it is a solution, if no solution is found, $F$.
+                    \Function{SearchCDB}{$\mathcal V$}
+                        \If{solved$(\mathcal V)$}
+                            \State \Return $\mathcal V$
+                        \EndIf
+                        \State Get the variable $x_{min}$ with the minimum cardinality of domain $|D(x_{min})|$.
+                        \For{$d$ in $D(x_{min})$}
+                            \State $\mathcal V' \gets \mathcal V$ \Comment{Back up in case of backtracking}
+                            \For{A set of variables $Y$ having AllDifferent constraint with $x_{min}$(For Sudoku problem, if $U$ is a unit, then $Y=U\setminus \{x_{min}\}$)}
+                                \If{$D(x_{min})\cap D(Y)=\emptyset$}
+                                    \State \Return F  \Comment{Use nogood to backjump}
+                                \EndIf
+                            \EndFor
+                            \State assign $d$ to variable $x_{min}$ and propagate constraints in $\mathcal V'$
+                            \If{assigning is successful}
+                                \State $\mathcal V'\gets$ \Call{SearchCDB}{$\mathcal V'$}
+                                \If{$\mathcal V'\neq F$}
+                                    \State \Return $\mathcal V'$
+                                \EndIf
+                            \EndIf
+                        \EndFor
+                        \State \Return $F$
+                    \EndFunction
+                \end{algorithmic}
+
+                All the code has been uploaded to \url{https://github.com/chaihahaha/sudoku_project}.
+        \end{frame}
+
+    \section{Comparison}
+        \begin{frame}{Ortools solver to my algorithm with O2, O8, OI2}
+            \begin{figure}[H]
+            \centering
+            \includegraphics[width=0.8\textwidth]{c2solver}
+            \caption{Time cost of Ortools solver and C version}
+            \end{figure}
+        \end{frame}
+
+        \begin{frame}{Ortools solver to HAC with Régin algorithm}
+            \begin{figure}[H]
+            \centering
+            \includegraphics[width=0.8\textwidth]{solver2p}
+            \caption{Time cost of Ortools solver and HAC with Régin algorithm}
+            \end{figure}
+        \end{frame}
+        \begin{frame}{HAC to my algorithm with O2, O8, OI2}
+            \begin{figure}[H]
+            \centering
+            \includegraphics[width=0.8\textwidth]{c2p}
+            \caption{Time cost of HAC and my algorithm}
+            \end{figure}
+        \end{frame}
+        \begin{frame}{my algorithm with and without OI2}
+            \begin{figure}[H]
+            \centering
+            \includegraphics[width=0.8\textwidth]{c2w}
+            \caption{Time cost of my algorithm with and without OI2}
+            \end{figure}
+        \end{frame}
+\bibliography{../report_bib}{}
+\bibliographystyle{plain}
+\end{document}
