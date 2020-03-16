@@ -371,8 +371,8 @@
                         \State Get the variable $x_{min}$ with the minimum cardinality of domain $|D(x_{min})|$.
                         \For{$d$ in $D(x_{min})$}
                             \State $\mathcal V' \gets \mathcal V$ \Comment{Back up in case of backtracking}
-                            \For{A set of variables $Y$ having AllDifferent constraint with $x_{min}$(For Sudoku problem, if $U$ is a unit, then $Y=U\setminus \{x_{min}\}$)}
-                                \If{$D(x_{min})\cap D(Y)=\emptyset$}
+                            \For{Locked candidate set $D_l$ for a set of variables $X_l$}
+                                \If{$|D_l|>|X_l|$}
                                     \State \Return F  \Comment{Use nogood to backjump}
                                 \EndIf
                             \EndFor

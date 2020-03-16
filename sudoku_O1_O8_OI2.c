@@ -33,16 +33,16 @@ int main()
     double time_spent;
     
     int n=0;
-    while(*(grids+n))
+    while(*(grids+n+1))
     {
         parse_grid(grids,n,values);
-        clock_gettime(CLOCK_REALTIME, &start);
+        timespec_get(&start, TIME_UTC);
         bool solved = search(values);
-        clock_gettime(CLOCK_REALTIME, &end);
+        timespec_get(&end, TIME_UTC);
         time_spent = (end.tv_sec - start.tv_sec) +
                      (end.tv_nsec - start.tv_nsec) / BILLION;
-        printf("%f\n", time_spent);
-        //printf("Solved? %s\n",solved?"Yes!":"No");
+        printf("%.9f\n", time_spent);
+        //printf("%d Solved? %s\n",n,solved?"Yes!":"No");
         //for(int j=0; j<81; j++)
         //{
         //    int d;
@@ -381,10 +381,22 @@ bool eliminate(bool values[81][9], int s, int d)
             }
             else
             {
+                int n_l = n_left(locked, &tmp);
                 // back jumping
-                if(n_left(locked, &tmp)>1)
+                if(n_l>1)
                 {
                     return false;
+                }
+                else if(n_l==1)
+                {
+                    for(int i=0; i<81; i++)
+                    {
+                        if(intersection[i]==true)
+                        {
+                            assign(values, i, tmp);
+                            break;
+                        }
+                    }
                 }
             }
         }
@@ -422,6 +434,7 @@ void grid_values(char* grid, bool values[81][9])
     int idx=0, count=0;
     while(grid[idx]!='\0' && count<81)
     {
+        //printf("%c",grid[idx]);
         if(grid[idx]>=49 && grid[idx]<=57)
         {
             if(!assign(values, count, grid[idx]-49))
@@ -464,6 +477,7 @@ void parse_grid(char** grids, int n, bool values[81][9])
     // parse the grids string and assign values grid by grid
     char* grid = *(grids+n);
     grid_values(grid, values);
+    //printf("\n");
     free(*(grids+n));
 }
 bool solved(bool values[81][9])
